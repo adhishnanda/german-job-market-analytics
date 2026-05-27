@@ -3,11 +3,12 @@
 ## Week 1 — Foundation
 
 ### Day 1 — 2026-05-27
-- [ ] Scaffold project directory structure
-- [ ] Create requirements.txt
-- [ ] Create .gitignore
-- [ ] Create skeleton README.md
-- [ ] Initialize Git and push to GitHub
+- [x] Scaffold project directory structure
+- [x] Create requirements.txt
+- [x] Create .gitignore
+- [x] Create skeleton README.md
+- [x] Initialize Git and make first commit (`b97487c`)
+- [ ] Create GitHub remote and push
 
 ### Day 2 — 2026-05-28
 - [ ] Test Bundesagentur API connection manually

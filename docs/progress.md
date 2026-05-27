@@ -11,11 +11,11 @@
 - [x] Create GitHub remote and push
 
 ### Day 2 — 2026-05-28
-- [ ] Test Bundesagentur API connection manually
-- [ ] Build etl/extractors/bundesagentur.py
-- [ ] Write tests/test_bundesagentur.py
-- [ ] Run tests and fix failures
-- [ ] Commit and push
+- [x] Test Bundesagentur API connection manually
+- [x] Build etl/extractors/bundesagentur.py
+- [x] Write tests/test_bundesagentur.py
+- [x] Run tests and fix failures
+- [x] Commit and push
 
 ### Day 3 — 2026-05-29
 - [ ] Build etl/transformers/normalizer.py

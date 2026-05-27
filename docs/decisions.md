@@ -33,6 +33,37 @@ lists. Empty-list stubs would let tests pass silently on unimplemented code;
 `NotImplementedError` makes the gap obvious and forces the test to be skipped
 explicitly (`pytest.skip`) until the real implementation exists.
 
+## 2026-05-28 — Bundesagentur API (Day 2 live testing)
+
+### BA API version: v6, not v4
+During live connection testing the v4 endpoint (`/pc/v4/jobs`) returned 403 for
+all requests. Investigation via the Angular app's `config/config.js` revealed
+the active endpoint is `/pc/v6/jobs`.
+
+### API key: `jobboerse-jobsuche`
+The key embedded in the BA Jobsuche SPA is `jobboerse-jobsuche` (previously
+`jobboerse-jobsuche-ui` in older versions of the app). Passed as `X-API-Key`
+header. No OAuth Bearer token is required for the public search endpoint.
+
+### v6 pagination is 1-indexed
+The `page` query parameter in v6 starts at 1 (not 0). Sending `page=0` returns
+a 400 with `"must be greater than or equal to 1"`. The extractor initialises
+each keyword × city loop at `page = 1`.
+
+### v6 response field names differ from v4
+| v4 field | v6 field |
+|---|---|
+| `stellenangebote` | `ergebnisliste` |
+| `hashId` | `referenznummer` |
+
+`maxErgebnisse` is unchanged. The extractor and tests were updated to use the v6
+field names; the `BA_` prefix uses `referenznummer` as the raw ID.
+
+### Browser User-Agent required
+The API gateway applies a WAF rule that varies on `User-Agent`. A browser-like
+string (`Mozilla/5.0 … AppleWebKit/537.36`) passes through; a Python or curl
+default does not. The `_HEADERS` dict in the extractor uses a Chrome UA.
+
 ### Airflow DAG: `@daily`, `catchup=False`
 The DAG is set to run once per day with no historical backfill. Bundesagentur
 and Indeed data is near-real-time; backfilling old dates would produce

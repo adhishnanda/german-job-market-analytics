@@ -1,0 +1,40 @@
+# Data — never commit
+data/raw/
+data/processed/
+data/db/
+*.duckdb
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / coverage artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Airflow
+airflow/logs/
+airflow/plugins/
+airflow.cfg
+airflow.db
+standalone_admin_password.txt
+webserver_config.py
+
+# OS
+.DS_Store
+Thumbs.db

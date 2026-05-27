@@ -48,6 +48,11 @@ Load to DuckDB:   python -m etl.loaders.duckdb_loader
 - Never commit: data/, .env, *.duckdb, __pycache__/
 - Branch for each new source: git checkout -b feat/stepstone-extractor
 
+## Git commit rules
+- Never add Co-authored-by lines to commit messages
+- Never mention Claude, AI, or Anthropic in commit messages
+- Commit messages must look like a human developer wrote them
+
 ## What NOT to do
 - Do not use requests-html or Playwright for Stepstone (gets blocked faster)
 - Do not parallelize scrapers — sequential only

@@ -8,7 +8,7 @@
 - [x] Create .gitignore
 - [x] Create skeleton README.md
 - [x] Initialize Git and make first commit (`b97487c`)
-- [ ] Create GitHub remote and push
+- [x] Create GitHub remote and push
 
 ### Day 2 — 2026-05-28
 - [ ] Test Bundesagentur API connection manually

@@ -17,6 +17,8 @@ Every extracted, normalised job posting lands here. The upsert key is `job_id`.
 | `fetched_at` | TIMESTAMP | Normalizer | UTC timestamp of extraction | `2026-05-28T09:14:22Z` |
 | `url` | VARCHAR | All | Direct URL to the job posting | `https://www.stepstone.de/job/...` |
 
+> **BA URL pattern:** `https://www.arbeitsagentur.de/jobsuche/jobdetail/{referenznummer}` — constructed by the normalizer from the raw `referenznummer` field; `NULL` if `referenznummer` is absent.
+
 ### Raw text fields (immutable after extraction)
 
 | Field | Type | Source | Description | Example |
@@ -29,7 +31,7 @@ Every extracted, normalised job posting lands here. The upsert key is `job_id`.
 
 | Field | Type | Source | Description | Example |
 |---|---|---|---|---|
-| `title_normalized` | VARCHAR | Normalizer | Cleaned, lowercased title for grouping | `data engineer` |
+| `title_normalized` | VARCHAR | Normalizer | `.lower().strip()` of `title_raw` — used for role taxonomy matching and display grouping | `data engineer` |
 | `company` | VARCHAR | All | Employer name | `Zalando SE` |
 | `city` | VARCHAR | All | City of the role | `Berlin` |
 | `region` | VARCHAR | BA / Normalizer | German federal state | `BERLIN` |
@@ -62,6 +64,11 @@ Monthly figures are converted to annual (`× 12`) during parsing.
 
 Stored as a DuckDB `VARCHAR[]` array. Empty array `[]` when no recognised
 skills are found.
+
+The normalizer initializes `skills` as `[]`; callers are responsible for
+running `skill_extractor.extract_skills(description_raw)` and writing the
+result back to this field before loading. The two steps are kept separate so
+the skill dictionary can be updated without re-running the full normalizer.
 
 ### Deduplication
 

@@ -53,6 +53,13 @@ Load to DuckDB:   python -m etl.loaders.duckdb_loader
 - Never mention Claude, AI, or Anthropic in commit messages
 - Commit messages must look like a human developer wrote them
 
+## Git rules
+- Never run git commit automatically
+- Never run git push automatically
+- When code is ready to commit, stop and tell me:
+  "Ready to commit. Suggested message: [message]"
+  Then wait for me to do it manually.
+
 ## What NOT to do
 - Do not use requests-html or Playwright for Stepstone (gets blocked faster)
 - Do not parallelize scrapers — sequential only

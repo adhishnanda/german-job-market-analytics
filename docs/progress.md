@@ -22,7 +22,7 @@
 - [x] Build etl/transformers/skill_extractor.py
 - [x] Write tests for both transformers
 - [x] Run tests and fix failures
-- [ ] Commit and push
+- [x] Commit and push (`7309872`)
 
 ### Day 4 — 2026-05-30
 - [ ] Build etl/transformers/salary_parser.py

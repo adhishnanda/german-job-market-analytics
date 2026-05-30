@@ -49,10 +49,10 @@
 - [x] Fix loader upsert for DuckDB 1.1.3 list-column compatibility
 - [x] Commit and push
 
-### Day 7
-- [ ] Build etl/extractors/stepstone.py
-- [ ] Test on 1 keyword × 1 page only
-- [ ] Verify rate limiting works
+### Day 7 — 2026-05-30
+- [x] Build etl/extractors/stepstone.py
+- [x] Write tests/test_stepstone.py (41 tests)
+- [x] Verify rate limiting, 403/429 handling, slug conversion
 - [ ] Commit and push
 
 ### Day 8

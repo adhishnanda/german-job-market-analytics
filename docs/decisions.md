@@ -205,6 +205,39 @@ wheel availability. The project uses Python 3.11 per CLAUDE.md; reverting to
 `duckdb==1.1.3` and `pandas==2.2.2` restores the originally-pinned versions,
 which ship 3.11 wheels and work on all target environments.
 
+## 2026-05-30 — Stepstone extractor (Day 7)
+
+### Slug conversion: lowercase + umlaut transliteration + hyphenate non-alphanum
+`_to_slug` lowercases, maps German umlauts (ä→ae, ö→oe, ü→ue, ß→ss) via
+`str.maketrans`, then collapses any run of non-alphanumeric characters to a
+single hyphen with `re.sub`. Leading/trailing hyphens are stripped.
+This matches Stepstone's URL pattern exactly without requiring a third-party
+slugify library.
+
+### _fetch_page returns the raw Response; status-code logic lives in fetch_jobs
+`_fetch_page` catches `RequestException` (connection errors) and returns None;
+otherwise it returns the `Response` unchanged so the caller can inspect the
+status code. Keeping status-code branching in `fetch_jobs` makes the 403/429
+"stop keyword" behaviour testable without mocking at the session level.
+
+### 403/429: stop keyword, not entire run
+A `blocked` flag is set when a 403 or 429 arrives; it breaks out of both the
+page loop and the location loop for that keyword, then the outer keyword loop
+continues normally. Other HTTP errors (5xx, etc.) break only the page loop —
+another location for the same keyword can still be tried.
+
+### Sleep before every request except the first (global counter)
+A module-level `request_count` integer tracks total requests across all
+keyword × location × page iterations. Sleep is skipped only when
+`request_count == 0` (the very first request). This matches the BA and Indeed
+pattern and ensures the 10–18 s gap is always observed between consecutive
+Stepstone requests regardless of keyword or page boundaries.
+
+### Snapshot format: JSON, one file per run
+Stepstone records are saved as a single `stepstone.json` in the dated
+subdirectory, matching the Bundesagentur snapshot format. CSV was not used
+because `VARCHAR[]` skill fields added later would require quoting gymnastics.
+
 ### Upsert strategy: DELETE + INSERT, no explicit transaction (Day 6)
 `INSERT OR REPLACE` fails on DuckDB 1.1.3 with `VARCHAR[]` columns
 (`NotImplementedException: List Update is not supported`). The replacement

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date, datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 from langdetect import LangDetectException, detect
@@ -116,6 +118,82 @@ def _normalize_ba(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_WORK_MODEL_KEYWORDS: list[tuple[str, str]] = [
+    ("REMOTE", [r"\bfully remote\b", r"\b100%\s*remote\b", r"\bremote\b"]),
+    ("HYBRID", [r"\bhybrid\b", r"\bteilweise remote\b", r"\bflex(ible)?\s*work\b"]),
+    ("ONSITE", [r"\bvor ort\b", r"\bon[\-\s]?site\b", r"\bin[\-\s]?office\b"]),
+]
+
+_EMPLOYMENT_KEYWORDS: list[tuple[str, str]] = [
+    ("FULL_TIME", [r"\bfull[\-\s]?time\b", r"\bvollzeit\b"]),
+    ("PART_TIME", [r"\bpart[\-\s]?time\b", r"\bteilzeit\b"]),
+    ("CONTRACT", [r"\bfreelance\b", r"\bcontract\b", r"\bbefristet\b"]),
+    ("INTERNSHIP", [r"\bintern\b", r"\bpraktikum\b", r"\bwerkstudent\b"]),
+]
+
+
+def _scan_keywords(text: str, patterns: list[tuple[str, list[str]]]) -> str:
+    """Return the first canonical value whose patterns match text, else 'UNKNOWN'."""
+    lower = text.lower()
+    for canonical, regexes in patterns:
+        if any(re.search(rx, lower) for rx in regexes):
+            return canonical
+    return "UNKNOWN"
+
+
+def _parse_rfc2822_date(raw: str | None) -> date | None:
+    """Parse an RFC 2822 date string (feedparser format) to a date; None on failure."""
+    if not raw:
+        return None
+    try:
+        return parsedate_to_datetime(raw).date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_indeed(raw: dict[str, Any]) -> dict[str, Any]:
+    """Map a raw Indeed RSS dict to the canonical jobs_raw schema."""
+    title_raw: str = raw.get("title_raw") or ""
+    title_normalized = title_raw.lower().strip()
+    description_raw: str = raw.get("description_raw") or ""
+
+    return {
+        # Identity and provenance
+        "job_id": raw["job_id_raw"],
+        "source": "indeed",
+        "source_keyword": None,
+        "source_city": raw.get("city_raw"),
+        "snapshot_date": date.today(),
+        "fetched_at": datetime.now(tz=timezone.utc),
+        "url": raw.get("url"),
+        # Raw text fields (immutable after extraction)
+        "title_raw": title_raw,
+        "description_raw": description_raw,
+        "salary_raw": None,
+        # Normalised attributes
+        "title_normalized": title_normalized,
+        "company": raw.get("company_raw"),
+        "city": raw.get("city_raw"),
+        "region": None,
+        "country": "DE",
+        "postal_code": None,
+        "lat": None,
+        "lon": None,
+        "posted_date": _parse_rfc2822_date(raw.get("posted_at_raw")),
+        "employment_type": _scan_keywords(description_raw, _EMPLOYMENT_KEYWORDS),
+        "work_model": _scan_keywords(description_raw, _WORK_MODEL_KEYWORDS),
+        "language": _detect_language(description_raw),
+        "role_category": _assign_role_category(title_normalized),
+        # Downstream fields — populated by later transformers
+        "skills": [],
+        "salary_min": None,
+        "salary_max": None,
+        "salary_currency": None,
+        "is_duplicate": False,
+        "canonical_id": None,
+    }
+
+
 def normalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
     """Return a normalised job record.
 
@@ -123,4 +201,6 @@ def normalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
     """
     if source == "bundesagentur":
         return _normalize_ba(raw)
+    if source == "indeed":
+        return _normalize_indeed(raw)
     raise ValueError(f"Unknown source: {source!r}")

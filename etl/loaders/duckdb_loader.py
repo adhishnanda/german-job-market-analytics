@@ -118,11 +118,12 @@ def load_to_connection(
     jobs: list[dict[str, Any]],
     conn: duckdb.DuckDBPyConnection,
 ) -> int:
-    """Upsert jobs into jobs_raw in one transaction; return the row count.
+    """Upsert jobs into jobs_raw; return the row count.
 
-    INSERT OR REPLACE replaces any existing row with the same job_id, so
-    re-running the pipeline against the same snapshot is fully idempotent.
-    The caller owns conn and must not close it between calls.
+    Deletes any existing rows whose job_id matches the incoming batch, then
+    inserts the full batch — achieving idempotent upsert semantics that work
+    with the VARCHAR[] skills column.  The caller owns conn and must not
+    close it between calls.
     """
     if not jobs:
         return 0
@@ -138,16 +139,13 @@ def load_to_connection(
     df = pd.DataFrame(rows, columns=_COLUMNS)
     col_list = ", ".join(_COLUMNS)
 
+    # INSERT OR REPLACE does not support list columns in DuckDB 1.1.x; and
+    # registering a view inside an explicit BEGIN breaks its visibility.
+    # Two auto-committed statements on the same in-process connection are
+    # effectively serialized, so no external transaction wrapper is needed.
     conn.register("_staging", df)
-    conn.execute("BEGIN")
-    try:
-        conn.execute(
-            f"INSERT OR REPLACE INTO jobs_raw ({col_list}) SELECT {col_list} FROM _staging"
-        )
-        conn.execute("COMMIT")
-    except Exception:
-        conn.execute("ROLLBACK")
-        raise
+    conn.execute("DELETE FROM jobs_raw WHERE job_id IN (SELECT job_id FROM _staging)")
+    conn.execute(f"INSERT INTO jobs_raw ({col_list}) SELECT {col_list} FROM _staging")
 
     return len(rows)
 

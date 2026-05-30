@@ -41,11 +41,13 @@
 
 ## Week 2 — Additional Sources
 
-### Day 6
-- [ ] Build etl/extractors/indeed.py (RSS route)
-- [ ] Test Indeed RSS parsing
-- [ ] Normalize Indeed records through existing transformer
-- [ ] Commit and push
+### Day 6 — 2026-05-30
+- [x] Build etl/extractors/indeed.py (RSS route)
+- [x] Test Indeed RSS parsing
+- [x] Normalize Indeed records through existing transformer
+- [x] Recreate .venv with Python 3.11; revert duckdb/pandas version bumps
+- [x] Fix loader upsert for DuckDB 1.1.3 list-column compatibility
+- [x] Commit and push
 
 ### Day 7
 - [ ] Build etl/extractors/stepstone.py

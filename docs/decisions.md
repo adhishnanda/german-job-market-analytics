@@ -199,8 +199,19 @@ Dashboard skill counts should not be inflated by duplicate postings; the view
 being consistent with `jobs_clean` removes the need for callers to remember an
 extra filter.
 
-### Package versions bumped for Python 3.14 compatibility
-`duckdb==1.1.3` and `pandas==2.2.2` (as originally pinned) have no pre-built
-wheels for Python 3.14 and cannot build from source without a full C++ toolchain
-on Windows. Bumped to `duckdb==1.5.3` and `pandas==3.0.3`, which ship 3.14
-wheels. No API-breaking changes affected the loader code.
+### Package versions reverted to Python 3.11 originals (Day 6)
+The Day 5 bumps (`duckdb==1.5.3`, `pandas==3.0.3`) were made for Python 3.14
+wheel availability. The project uses Python 3.11 per CLAUDE.md; reverting to
+`duckdb==1.1.3` and `pandas==2.2.2` restores the originally-pinned versions,
+which ship 3.11 wheels and work on all target environments.
+
+### Upsert strategy: DELETE + INSERT, no explicit transaction (Day 6)
+`INSERT OR REPLACE` fails on DuckDB 1.1.3 with `VARCHAR[]` columns
+(`NotImplementedException: List Update is not supported`). The replacement
+strategy is an explicit `DELETE FROM jobs_raw WHERE job_id IN (SELECT job_id
+FROM _staging)` followed by `INSERT INTO jobs_raw … SELECT … FROM _staging`.
+Wrapping these in an explicit `BEGIN/COMMIT` block prevented the `_staging`
+registered view from being visible inside the transaction in DuckDB 1.1.3,
+causing the DELETE to silently match nothing. Removing `BEGIN/COMMIT` and
+relying on per-statement auto-commit resolves both issues. Atomicity is not a
+practical concern for an in-process, single-writer pipeline.

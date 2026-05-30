@@ -6,7 +6,7 @@ Indeed RSS, Stepstone (HTML), and LinkedIn (manual CSV). Analyzes skill demand
 trends across German data/analytics roles. Final output: live Streamlit dashboard.
 
 ## Tech stack
-- Python 3.11+ with virtual environment (venv)
+- Python 3.11 with virtual environment (venv)
 - DuckDB for analytical storage
 - Apache Airflow for orchestration
 - Streamlit for dashboard

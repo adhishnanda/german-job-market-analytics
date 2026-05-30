@@ -291,4 +291,4 @@ class TestNormalizeDownstreamDefaults:
 class TestNormalizeUnknownSource:
     def test_unknown_source_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown source"):
-            normalize(_make_ba_raw(), "indeed")
+            normalize(_make_ba_raw(), "stepstone")

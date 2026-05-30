@@ -59,8 +59,8 @@
 - [x] Create docs/linkedin_manual_template.csv
 - [x] Build etl/extractors/linkedin.py (CSV reader)
 - [x] Write tests/test_linkedin.py (37 tests)
-- [ ] Collect first 20 LinkedIn listings manually
-- [ ] Commit and push
+- [x] Collect first 20 LinkedIn listings manually
+- [x] Commit and push
 
 ### Day 9
 - [ ] Build cross-source deduplicator

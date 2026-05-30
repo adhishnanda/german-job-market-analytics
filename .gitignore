@@ -6,6 +6,8 @@ data/db/
 
 # Secrets
 .env
+.claude
+claude.md
 
 # Python
 __pycache__/

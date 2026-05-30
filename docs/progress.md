@@ -18,10 +18,10 @@
 - [x] Commit and push
 
 ### Day 3 — 2026-05-29
-- [ ] Build etl/transformers/normalizer.py
-- [ ] Build etl/transformers/skill_extractor.py
-- [ ] Write tests for both transformers
-- [ ] Run tests and fix failures
+- [x] Build etl/transformers/normalizer.py
+- [x] Build etl/transformers/skill_extractor.py
+- [x] Write tests for both transformers
+- [x] Run tests and fix failures
 - [ ] Commit and push
 
 ### Day 4 — 2026-05-30

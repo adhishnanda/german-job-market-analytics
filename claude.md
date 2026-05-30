@@ -58,3 +58,7 @@ Load to DuckDB:   python -m etl.loaders.duckdb_loader
 - Do not parallelize scrapers — sequential only
 - Do not hardcode sleep times — use random.uniform(min, max)
 - Do not store raw HTML in DuckDB — store only parsed fields + raw text
+
+## Environment
+- Python version: 3.11 (use this interpreter explicitly)
+- Virtual environment: .venv/ (created with python3.11 -m venv .venv)

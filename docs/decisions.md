@@ -115,6 +115,45 @@ and re-run over stored normalized records without re-fetching or re-parsing
 raw data. The caller (pipeline or loader) is responsible for wiring the two
 steps together.
 
+## 2026-05-30 — Salary parser and deduplicator (Day 4)
+
+### Single salary figure: salary_min = salary_max
+When only one numeric value is found in `salary_raw` (e.g. `"€60.000"`), both
+`salary_min` and `salary_max` are set to that value rather than leaving one as
+`NULL`. A point estimate treated as a range keeps the dashboard consistent —
+all salary comparisons and bucket queries can use `salary_min`/`salary_max`
+uniformly without special-casing single values.
+Trade-off: loses the distinction between "we know both endpoints" and "we know
+only one figure", but that signal is not used anywhere in the current pipeline.
+
+### Currency defaults to EUR
+`_detect_currency` returns `"EUR"` when no currency symbol is present in
+`salary_raw`. The dataset is German-market only; an undecorated number like
+`"50000"` is almost certainly EUR. Explicit `$`/`USD` and `£`/`GBP` symbols
+override the default.
+
+### Dedup city guard: hard requirement, skip if either city is None
+`_is_cross_source_match` returns `False` immediately if either record has
+`city = None`, rather than falling through to company+title+date matching.
+Reason: without a location anchor the false-positive rate is too high — the
+same role title at the same company can exist in multiple cities simultaneously
+(e.g. "Data Engineer" at SAP in Berlin and Munich). Cross-source dedup without
+city would incorrectly collapse genuinely distinct postings.
+The same hard-skip applies to `posted_date`.
+
+### Pass 2 dedup: sort by priority, walk highest-to-lowest
+Cross-source deduplication collects all surviving canonical records, sorts them
+by `_SOURCE_PRIORITY` (bundesagentur=0, indeed=1, stepstone=2, linkedin=3),
+then iterates from the top. Each record is checked against a `locked` list of
+already-processed higher-priority records; if a match is found the current
+record is marked duplicate and skipped, otherwise it joins `locked`.
+This single-pass approach is O(n²) in the number of cross-source canonicals
+but avoids any graph-resolution complexity. At expected dataset sizes (hundreds
+to low thousands of postings per run) the cost is negligible.
+Alternative considered: build a graph of matched pairs and resolve connected
+components. Rejected — overkill for the dataset size and harder to reason about
+priority ordering across multi-hop matches.
+
 ### `language` defaults to `"unknown"`, never raises
 `_detect_language` catches `LangDetectException` and returns `"unknown"`
 rather than propagating. Short descriptions (< ~20 chars), empty strings, and
@@ -127,3 +166,41 @@ string comparisons are simpler in SQL aggregations.
 when the source field is absent or unrecognised. This keeps `work_model` and
 `employment_type` non-null in every record, which simplifies GROUP BY and
 filter queries in the dashboard layer.
+
+## 2026-05-31 — DuckDB loader (Day 5)
+
+### Upsert via INSERT OR REPLACE INTO
+The loader uses `INSERT OR REPLACE INTO jobs_raw` rather than
+`INSERT INTO … ON CONFLICT DO UPDATE`. DuckDB supports both; `INSERT OR REPLACE`
+is simpler — it replaces the entire row on a `PRIMARY KEY` conflict — and the
+pipeline always re-derives every field from fresh source data, so partial-update
+semantics offer no benefit here. The tradeoff is that partial re-runs (only some
+fields changed) also replace the entire row, but that is fine for this pipeline.
+
+### load_to_connection separated from load
+`load_to_connection(jobs, conn)` is the testable core; `load(jobs, db_path)` is
+a thin wrapper that opens the connection and delegates. This lets tests inject an
+in-memory DuckDB connection without touching the filesystem.
+
+### DataFrame registration for bulk upsert
+Records are converted to a pandas DataFrame, registered with DuckDB as a view
+(`conn.register("_staging", df)`), then inserted via SQL. This is cleaner than
+`executemany` (which requires manual type coercion for `DATE`, `BOOLEAN`,
+`VARCHAR[]`) and avoids building a large `VALUES (…)` clause.
+
+### fetched_at stored as tz-naive TIMESTAMP
+The normalizer produces a timezone-aware `datetime` (UTC). DuckDB's `TIMESTAMP`
+type is tz-naive. The loader strips `tzinfo` before insertion — the value is
+always UTC so stripping is lossless, and it avoids DuckDB type-mismatch errors.
+
+### skills_exploded excludes duplicate records
+The `skills_exploded` view filters `is_duplicate = FALSE`, matching `jobs_clean`.
+Dashboard skill counts should not be inflated by duplicate postings; the view
+being consistent with `jobs_clean` removes the need for callers to remember an
+extra filter.
+
+### Package versions bumped for Python 3.14 compatibility
+`duckdb==1.1.3` and `pandas==2.2.2` (as originally pinned) have no pre-built
+wheels for Python 3.14 and cannot build from source without a full C++ toolchain
+on Windows. Bumped to `duckdb==1.5.3` and `pandas==3.0.3`, which ship 3.14
+wheels. No API-breaking changes affected the loader code.

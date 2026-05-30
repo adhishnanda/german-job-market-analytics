@@ -25,17 +25,18 @@
 - [x] Commit and push (`7309872`)
 
 ### Day 4 — 2026-05-30
-- [ ] Build etl/transformers/salary_parser.py
-- [ ] Build etl/transformers/deduplicator.py
-- [ ] Write tests for both
-- [ ] Commit and push
+- [x] Build etl/transformers/salary_parser.py
+- [x] Build etl/transformers/deduplicator.py
+- [x] Write tests for both
+- [x] Commit and push
 
 ### Day 5 — 2026-05-31
-- [ ] Build etl/loaders/duckdb_loader.py
-- [ ] Create jobs_raw table schema in DuckDB
-- [ ] Create jobs_clean view
-- [ ] Write tests with in-memory DuckDB
-- [ ] End-to-end test: BA extract → normalize → load
+- [x] Build etl/loaders/duckdb_loader.py
+- [x] Create jobs_raw table schema in DuckDB
+- [x] Create jobs_clean view
+- [x] Create skills_exploded view
+- [x] Write tests with in-memory DuckDB
+- [x] End-to-end test: BA extract → normalize → load
 - [ ] Commit and push
 
 ## Week 2 — Additional Sources

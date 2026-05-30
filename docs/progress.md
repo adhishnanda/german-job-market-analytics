@@ -37,7 +37,7 @@
 - [x] Create skills_exploded view
 - [x] Write tests with in-memory DuckDB
 - [x] End-to-end test: BA extract → normalize → load
-- [ ] Commit and push
+- [x] Commit and push
 
 ## Week 2 — Additional Sources
 

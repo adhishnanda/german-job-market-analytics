@@ -53,7 +53,7 @@
 - [x] Build etl/extractors/stepstone.py
 - [x] Write tests/test_stepstone.py (41 tests)
 - [x] Verify rate limiting, 403/429 handling, slug conversion
-- [ ] Commit and push
+- [x] Commit and push
 
 ### Day 8
 - [ ] Create docs/linkedin_manual_template.csv

@@ -1,11 +1,11 @@
 """Tests for the Bundesagentur extractor."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 
 from etl.extractors.bundesagentur import (
@@ -96,7 +96,9 @@ class TestFetchJobs:
         assert all(r["job_id"].startswith("BA_") for r in results)
 
     def test_job_id_uses_referenznummer(self) -> None:
-        payload = _page_payload([{"referenznummer": "10000-abc123", "stellenangebotsTitel": "Job"}], total=1)
+        payload = _page_payload(
+            [{"referenznummer": "10000-abc123", "stellenangebotsTitel": "Job"}], total=1
+        )
 
         with patch("etl.extractors.bundesagentur._fetch_page", return_value=payload):
             with patch("etl.extractors.bundesagentur.time.sleep"):
@@ -190,7 +192,9 @@ class TestFetchJobs:
             "etl.extractors.bundesagentur._fetch_page", return_value=payload
         ) as mock_fetch:
             with patch("etl.extractors.bundesagentur.time.sleep"):
-                results = fetch_jobs(["Data Engineer", "Data Analyst"], ["Berlin", "Munich"])
+                results = fetch_jobs(
+                    ["Data Engineer", "Data Analyst"], ["Berlin", "Munich"]
+                )
 
         # 2 keywords × 2 cities = 4 requests
         assert mock_fetch.call_count == 4

@@ -1,4 +1,5 @@
 """End-to-end pipeline runner: extract → normalize → deduplicate → load → report."""
+
 from __future__ import annotations
 
 import logging
@@ -29,7 +30,10 @@ LINKEDIN_SAMPLE = Path("data/raw/linkedin_sample.csv")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _normalize_batch(raw_records: list[dict[str, Any]], source: str) -> list[dict[str, Any]]:
+
+def _normalize_batch(
+    raw_records: list[dict[str, Any]], source: str
+) -> list[dict[str, Any]]:
     """Normalize, parse salary, and extract skills for one source batch."""
     out: list[dict[str, Any]] = []
     for raw in raw_records:
@@ -47,7 +51,9 @@ def _normalize_batch(raw_records: list[dict[str, Any]], source: str) -> list[dic
             record["salary_max"] = smax
             record["salary_currency"] = scur
 
-        record["skills"] = skill_extractor.extract_skills(record.get("description_raw") or "")
+        record["skills"] = skill_extractor.extract_skills(
+            record.get("description_raw") or ""
+        )
         out.append(record)
     return out
 
@@ -62,6 +68,7 @@ def _null_rate(records: list[dict[str, Any]], field: str) -> float:
 # ---------------------------------------------------------------------------
 # Summary report
 # ---------------------------------------------------------------------------
+
 
 def _print_summary(
     extracted: dict[str, list[dict[str, Any]]],
@@ -94,7 +101,7 @@ def _print_summary(
     dup_count = sum(1 for r in after_dedup if r.get("is_duplicate"))
     canonical_count = len(after_dedup) - dup_count
     dup_pct = dup_count / len(after_dedup) * 100 if after_dedup else 0.0
-    print(f"\n[After deduplication]")
+    print("\n[After deduplication]")
     print(f"  {'Total records':<22s}  {len(after_dedup):>5d}")
     print(f"  {'Canonical':<22s}  {canonical_count:>5d}")
     print(f"  {'Duplicates':<22s}  {dup_count:>5d}  ({dup_pct:.1f}%)")
@@ -113,12 +120,12 @@ def _print_summary(
         print(f"  {src:<22s}  {dups:>3d}/{total:<5d}  ({rate:.1f}%)")
 
     # --- Loaded ---
-    print(f"\n[Loaded to DuckDB]")
+    print("\n[Loaded to DuckDB]")
     print(f"  Records loaded         : {loaded}")
 
     # --- Null rates for key fields (canonical records only) ---
     canonical = [r for r in after_dedup if not r.get("is_duplicate")]
-    print(f"\n[Null rates — canonical records only]")
+    print("\n[Null rates — canonical records only]")
     for field in ("salary_min", "city", "posted_date"):
         rate = _null_rate(canonical, field)
         flag = "  *** HIGH ***" if rate > 0.50 else ""
@@ -134,9 +141,7 @@ def _print_summary(
         print(f"  {skill:<32s}  {cnt:>4d}")
 
     # --- Top 5 companies ---
-    company_ctr: Counter = Counter(
-        r["company"] for r in canonical if r.get("company")
-    )
+    company_ctr: Counter = Counter(r["company"] for r in canonical if r.get("company"))
     print("\n[Top 5 companies by posting count]")
     for company, cnt in company_ctr.most_common(5):
         print(f"  {company:<40s}  {cnt:>4d}")
@@ -147,6 +152,7 @@ def _print_summary(
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
+
 
 def run_pipeline(
     linkedin_csv: Path = LINKEDIN_SAMPLE,
@@ -226,7 +232,9 @@ def run_pipeline(
     dup_count = sum(1 for r in deduped if r.get("is_duplicate"))
     canonical_count = len(deduped) - dup_count
     dup_pct = dup_count / len(deduped) * 100 if deduped else 0.0
-    print(f"  Total={len(deduped)}  canonical={canonical_count}  duplicates={dup_count} ({dup_pct:.1f}%)")
+    print(
+        f"  Total={len(deduped)}  canonical={canonical_count}  duplicates={dup_count} ({dup_pct:.1f}%)"
+    )
 
     # -----------------------------------------------------------------------
     # 4. Load

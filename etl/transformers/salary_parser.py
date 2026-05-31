@@ -1,4 +1,5 @@
 """Parse salary ranges from raw salary strings (German and English formats)."""
+
 from __future__ import annotations
 
 import re
@@ -18,7 +19,7 @@ _MONTHLY_RE = re.compile(
 # integers, each with an optional 1-2 digit decimal part and optional k/K suffix.
 _TOKEN_RE = re.compile(
     r"(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?"  # thousands format
-    r"|\d+(?:[.,]\d{1,2})?)"                    # plain integer or decimal
+    r"|\d+(?:[.,]\d{1,2})?)"  # plain integer or decimal
     r"([kK])?",
     re.IGNORECASE,
 )
@@ -93,7 +94,9 @@ def _extract_values(text: str) -> list[float]:
     return values[:2]
 
 
-def parse_salary(salary_raw: str | None) -> tuple[float | None, float | None, str | None]:
+def parse_salary(
+    salary_raw: str | None,
+) -> tuple[float | None, float | None, str | None]:
     """Parse a raw salary string into (salary_min, salary_max, currency).
 
     Returns (None, None, None) when no parseable salary is found.

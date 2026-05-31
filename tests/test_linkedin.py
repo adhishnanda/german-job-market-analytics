@@ -1,4 +1,5 @@
 """Tests for etl/extractors/linkedin.py."""
+
 from __future__ import annotations
 
 import csv
@@ -58,7 +59,9 @@ def _make_snap(base: Path, date_str: str = "2026-05-30") -> Path:
 
 class TestValidateColumns:
     def test_all_required_present_does_not_raise(self, tmp_path: Path) -> None:
-        _validate_columns(["job_id_raw", "title_raw", "company_raw"], tmp_path / "f.csv")
+        _validate_columns(
+            ["job_id_raw", "title_raw", "company_raw"], tmp_path / "f.csv"
+        )
 
     def test_missing_job_id_raw_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="job_id_raw"):
@@ -198,7 +201,10 @@ class TestParseRow:
 class TestReadCsv:
     def test_reads_two_rows(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "listings.csv"
-        rows = [_FULL_ROW, {**_FULL_ROW, "job_id_raw": "9999", "title_raw": "BI Analyst"}]
+        rows = [
+            _FULL_ROW,
+            {**_FULL_ROW, "job_id_raw": "9999", "title_raw": "BI Analyst"},
+        ]
         _write_csv(csv_path, rows)
         records = _read_csv(csv_path)
         assert len(records) == 2
@@ -263,7 +269,9 @@ class TestReadCsvs:
         result = read_csvs(date_str="2026-05-30", base_dir=tmp_path)
         assert result == []
 
-    def test_returns_empty_list_when_directory_has_no_csvs(self, tmp_path: Path) -> None:
+    def test_returns_empty_list_when_directory_has_no_csvs(
+        self, tmp_path: Path
+    ) -> None:
         _make_snap(tmp_path)
         result = read_csvs(date_str="2026-05-30", base_dir=tmp_path)
         assert result == []
@@ -292,7 +300,10 @@ class TestReadCsvs:
 
     def test_all_records_have_source_linkedin(self, tmp_path: Path) -> None:
         snap = _make_snap(tmp_path)
-        rows = [_FULL_ROW, {**_FULL_ROW, "job_id_raw": "1111", "title_raw": "Data Scientist"}]
+        rows = [
+            _FULL_ROW,
+            {**_FULL_ROW, "job_id_raw": "1111", "title_raw": "Data Scientist"},
+        ]
         _write_csv(snap / "listings.csv", rows)
         records = read_csvs(date_str="2026-05-30", base_dir=tmp_path)
         assert all(r["source"] == "linkedin" for r in records)
@@ -471,9 +482,7 @@ class TestCityAutoFill:
 
 
 class TestPostedAtRawConversion:
-    def _patched_parse_row(
-        self, row: dict[str, str], fake_today: str
-    ) -> dict | None:
+    def _patched_parse_row(self, row: dict[str, str], fake_today: str) -> dict | None:
         import etl.extractors.linkedin as li_mod
         from datetime import date as _date
 

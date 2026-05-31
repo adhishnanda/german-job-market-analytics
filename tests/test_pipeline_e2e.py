@@ -1,4 +1,5 @@
 """End-to-end integration test: BA fetch → normalize → deduplicate → load."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -6,8 +7,6 @@ from unittest.mock import patch
 
 import duckdb
 import pytest
-import requests
-from unittest.mock import MagicMock
 
 from etl.extractors.bundesagentur import fetch_jobs
 from etl.loaders.duckdb_loader import _ensure_schema, load_to_connection
@@ -111,9 +110,7 @@ class TestFullPipeline:
         clean_count = mem_conn.execute("SELECT count(*) FROM jobs_clean").fetchone()[0]
         assert clean_count == 10
 
-    def test_upsert_is_idempotent(
-        self, mem_conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_upsert_is_idempotent(self, mem_conn: duckdb.DuckDBPyConnection) -> None:
         records = _run_pipeline([_make_ba_raw(i) for i in range(10)])
         load_to_connection(records, mem_conn)
         load_to_connection(records, mem_conn)
@@ -121,9 +118,7 @@ class TestFullPipeline:
         count = mem_conn.execute("SELECT count(*) FROM jobs_raw").fetchone()[0]
         assert count == 10
 
-    def test_load_returns_row_count(
-        self, mem_conn: duckdb.DuckDBPyConnection
-    ) -> None:
+    def test_load_returns_row_count(self, mem_conn: duckdb.DuckDBPyConnection) -> None:
         records = _run_pipeline([_make_ba_raw(i) for i in range(5)])
         result = load_to_connection(records, mem_conn)
         assert result == 5
@@ -206,7 +201,14 @@ class TestSkillsExplodedView:
 
         result = mem_conn.execute("SELECT * FROM skills_exploded LIMIT 1")
         col_names = [desc[0] for desc in result.description]
-        assert col_names == ["job_id", "source", "city", "role_category", "posted_date", "skill"]
+        assert col_names == [
+            "job_id",
+            "source",
+            "city",
+            "role_category",
+            "posted_date",
+            "skill",
+        ]
 
     def test_excludes_duplicate_records(
         self, mem_conn: duckdb.DuckDBPyConnection

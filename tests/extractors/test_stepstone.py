@@ -1,4 +1,5 @@
 """Tests for the Stepstone extractor."""
+
 from __future__ import annotations
 
 import pytest

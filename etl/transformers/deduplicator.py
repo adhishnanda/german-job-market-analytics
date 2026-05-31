@@ -1,4 +1,5 @@
 """Identify and drop duplicate job postings across sources."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -95,10 +96,9 @@ def deduplicate(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for record in canonicals:
         matched = False
         for candidate in locked:
-            if (
-                candidate.get("source") != record.get("source")
-                and _is_cross_source_match(record, candidate)
-            ):
+            if candidate.get("source") != record.get(
+                "source"
+            ) and _is_cross_source_match(record, candidate):
                 record["is_duplicate"] = True
                 record["canonical_id"] = candidate["job_id"]
                 matched = True

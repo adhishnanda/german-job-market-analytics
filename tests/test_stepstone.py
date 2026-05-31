@@ -1,4 +1,5 @@
 """Tests for etl/extractors/stepstone.py."""
+
 from __future__ import annotations
 
 import json
@@ -62,7 +63,9 @@ def _patched_session(side_effect=None, return_value=None):
     else:
         mock_session.get.return_value = return_value
 
-    patcher = patch("etl.extractors.stepstone.requests.Session", return_value=mock_session)
+    patcher = patch(
+        "etl.extractors.stepstone.requests.Session", return_value=mock_session
+    )
     return patcher, mock_session
 
 
@@ -160,6 +163,7 @@ class TestParseCards:
     def test_posted_date_raw_from_timeago(self) -> None:
         from datetime import date
         from unittest.mock import patch as _patch
+
         # "vor 1 Tagen" with today=2026-05-31 → 2026-05-30
         with _patch("etl.extractors.stepstone.date") as mock_date:
             mock_date.today.return_value = date(2026, 5, 31)
@@ -229,7 +233,9 @@ class TestFetchJobs403Handling:
         patcher, _ = _patched_session(side_effect=_side_effect)
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep"):
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     with caplog.at_level("WARNING", logger="etl.extractors.stepstone"):
                         result = fetch_jobs(
                             keywords=["data-analyst", "data-engineer"],
@@ -246,9 +252,13 @@ class TestFetchJobs403Handling:
         patcher, _ = _patched_session(return_value=_make_response(429))
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep"):
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     with caplog.at_level("WARNING", logger="etl.extractors.stepstone"):
-                        result = fetch_jobs(keywords=["data-analyst"], locations=["berlin"])
+                        result = fetch_jobs(
+                            keywords=["data-analyst"], locations=["berlin"]
+                        )
 
         assert result == []
         assert "429" in caplog.text
@@ -269,7 +279,9 @@ class TestFetchJobs403Handling:
         patcher, _ = _patched_session(side_effect=_side_effect)
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep"):
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     result = fetch_jobs(
                         keywords=["data-analyst", "data-engineer", "data-scientist"],
                         locations=["berlin"],
@@ -293,7 +305,9 @@ class TestRateLimiting:
             with patch("etl.extractors.stepstone.time.sleep"):
                 with patch("etl.extractors.stepstone.random.uniform") as mock_uniform:
                     mock_uniform.return_value = 13.7
-                    fetch_jobs(keywords=["data-analyst", "data-engineer"], locations=["berlin"])
+                    fetch_jobs(
+                        keywords=["data-analyst", "data-engineer"], locations=["berlin"]
+                    )
 
         for c in mock_uniform.call_args_list:
             lo, hi = c.args
@@ -304,17 +318,25 @@ class TestRateLimiting:
         patcher, _ = _patched_session(return_value=_make_response(200, _TWO_CARD_HTML))
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep") as mock_sleep:
-                with patch("etl.extractors.stepstone.random.uniform", return_value=14.5):
-                    fetch_jobs(keywords=["data-analyst", "data-engineer"], locations=["berlin"])
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=14.5
+                ):
+                    fetch_jobs(
+                        keywords=["data-analyst", "data-engineer"], locations=["berlin"]
+                    )
 
         for c in mock_sleep.call_args_list:
             assert c.args == (14.5,)
 
     def test_no_sleep_before_first_request(self) -> None:
-        patcher, _ = _patched_session(return_value=_make_response(200, _EMPTY_PAGE_HTML))
+        patcher, _ = _patched_session(
+            return_value=_make_response(200, _EMPTY_PAGE_HTML)
+        )
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep") as mock_sleep:
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     fetch_jobs(keywords=["data-analyst"], locations=["berlin"])
 
         mock_sleep.assert_not_called()
@@ -324,8 +346,12 @@ class TestRateLimiting:
         patcher, _ = _patched_session(return_value=_make_response(200, _TWO_CARD_HTML))
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep") as mock_sleep:
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
-                    fetch_jobs(keywords=["data-analyst", "data-engineer"], locations=["berlin"])
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
+                    fetch_jobs(
+                        keywords=["data-analyst", "data-engineer"], locations=["berlin"]
+                    )
 
         assert mock_sleep.call_count == 3
 
@@ -337,10 +363,14 @@ class TestRateLimiting:
 
 class TestEmptyPageHandling:
     def test_empty_first_page_returns_no_records(self) -> None:
-        patcher, _ = _patched_session(return_value=_make_response(200, _EMPTY_PAGE_HTML))
+        patcher, _ = _patched_session(
+            return_value=_make_response(200, _EMPTY_PAGE_HTML)
+        )
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep"):
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     result = fetch_jobs(keywords=["data-analyst"], locations=["berlin"])
 
         assert result == []
@@ -351,12 +381,16 @@ class TestEmptyPageHandling:
         def _side_effect(url: str, **kwargs: object) -> MagicMock:
             nonlocal call_count
             call_count += 1
-            return _make_response(200, _TWO_CARD_HTML if call_count == 1 else _EMPTY_PAGE_HTML)
+            return _make_response(
+                200, _TWO_CARD_HTML if call_count == 1 else _EMPTY_PAGE_HTML
+            )
 
         patcher, mock_session = _patched_session(side_effect=_side_effect)
         with patcher:
             with patch("etl.extractors.stepstone.time.sleep"):
-                with patch("etl.extractors.stepstone.random.uniform", return_value=12.0):
+                with patch(
+                    "etl.extractors.stepstone.random.uniform", return_value=12.0
+                ):
                     result = fetch_jobs(keywords=["data-analyst"], locations=["berlin"])
 
         assert len(result) == 2

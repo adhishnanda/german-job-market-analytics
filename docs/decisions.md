@@ -423,3 +423,54 @@ The `DAG.schedule_interval` attribute was removed in Airflow 3.0. The stored
 schedule string is now accessed via `dag.schedule`, which returns `"@daily"` when
 the DAG is constructed with `schedule="@daily"`. The test suite checks
 `dag.schedule == "@daily"` accordingly.
+
+## 2026-05-31 — SQL aggregations layer (Day 12)
+
+### Five aggregation functions, each accepting an open connection
+`analytics/aggregations.py` exposes five functions — `skill_demand_weekly`,
+`role_by_city`, `salary_dist`, `language_ratio`, `source_coverage` — each taking
+a `duckdb.DuckDBPyConnection` and returning a `pd.DataFrame`.
+Reason for the connection-injection pattern: the dashboard will hold one
+long-lived read-only connection opened against `data/db/jobs.duckdb`; injecting
+it avoids opening and closing a file-backed connection on every chart render, and
+lets tests substitute an in-memory connection without any mocking.
+
+### All queries target jobs_clean, not jobs_raw
+Every function queries the `jobs_clean` view (`WHERE is_duplicate = FALSE`) or
+the `skills_exploded` view (which also filters `is_duplicate = FALSE`). Querying
+`jobs_raw` directly would require each function to repeat the duplicate filter;
+using the views makes the de-duplication invariant impossible to forget.
+
+### skill_demand_weekly queries skills_exploded, not jobs_clean
+Skills live in a `VARCHAR[]` array on `jobs_raw`. To count per-skill per-week,
+the array must be unnested into one row per skill. The `skills_exploded` view
+already performs this unnest and inherits the `is_duplicate = FALSE` filter, so
+`skill_demand_weekly` queries that view directly rather than calling
+`UNNEST(skills)` inside the aggregation function itself.
+`DATE_TRUNC('week', posted_date)` truncates to the ISO Monday of the week.
+Records with `posted_date IS NULL` are excluded — their week bucket is unknown
+and grouping them as `NULL` would mislead the dashboard time axis.
+
+### salary_dist filters WHERE salary_min IS NOT NULL at the SQL level
+Salary data is sparse (~5–10% of records have a salary). Returning all canonical
+records and letting the caller drop nulls would give the dashboard a large mostly-
+null DataFrame. Filtering in SQL keeps the returned DataFrame compact and makes
+the semantics of the function explicit in its query.
+
+### language_ratio uses a two-CTE pattern to compute per-source percentages
+A `base` CTE groups by `(source, language)` to get counts; a `totals` CTE sums
+per source; the outer query joins them to compute `pct = count / total`.
+Alternative considered: a window function (`COUNT(*) OVER (PARTITION BY source)`).
+Rejected because the CTE pattern is more readable and explicitly separates the
+two aggregation levels. The `pct` is rounded to 4 decimal places — enough
+precision for a percentage display without floating-point noise in test assertions.
+
+### Date comparison in tests uses pd.Timestamp, not datetime.date
+DuckDB DATE columns come back from `.df()` as `numpy.datetime64` / `pd.Timestamp`
+in pandas, not as `datetime.date`. Tests that filter rows by date value
+(e.g. `df[df["week_start"] == date(2026, 5, 4)]`) silently return an empty
+DataFrame when the left side is `Timestamp` and the right is `date`.
+Fix: all date literals in tests use `pd.Timestamp("YYYY-MM-DD")`.
+Fixture dates were chosen to land on ISO Mondays (2026-05-04, 2026-05-11) so
+`DATE_TRUNC('week', posted_date)` returns the same date unchanged, making
+expected values trivial to compute without a calendar lookup.

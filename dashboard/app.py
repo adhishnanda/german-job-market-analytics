@@ -1,4 +1,5 @@
 """Streamlit entry point for the German Job Market Analytics dashboard."""
+
 from __future__ import annotations
 
 import streamlit as st

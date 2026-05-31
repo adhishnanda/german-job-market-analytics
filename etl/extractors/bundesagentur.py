@@ -1,4 +1,5 @@
 """Extractor for the Bundesagentur für Arbeit jobs API (BA_)."""
+
 from __future__ import annotations
 
 import json

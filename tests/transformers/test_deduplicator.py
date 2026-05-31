@@ -1,4 +1,5 @@
 """Tests for the deduplicator."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -54,8 +55,12 @@ class TestPassOneWithinSourceDedup:
 
     def test_pass1_groups_by_source_and_job_id(self) -> None:
         """The same job_id string under two different sources is not a Pass-1 duplicate."""
-        r1 = _make_record(job_id="JOB_001", source="bundesagentur", title_normalized="xyz role alpha")
-        r2 = _make_record(job_id="JOB_001", source="indeed", title_normalized="completely unrelated")
+        r1 = _make_record(
+            job_id="JOB_001", source="bundesagentur", title_normalized="xyz role alpha"
+        )
+        r2 = _make_record(
+            job_id="JOB_001", source="indeed", title_normalized="completely unrelated"
+        )
         deduplicate([r1, r2])
         # Pass 1: different (source, job_id) keys → not a duplicate
         # Pass 2: title too dissimilar → not a duplicate
@@ -89,20 +94,32 @@ class TestPassTwoCrossSourceDedup:
         assert indeed["canonical_id"] == "BA_001"
 
     def test_title_too_dissimilar_no_dedup(self) -> None:
-        ba = _make_record(job_id="BA_001", source="bundesagentur", title_normalized="data engineer")
-        indeed = _make_record(job_id="IN_001", source="indeed", title_normalized="product manager")
+        ba = _make_record(
+            job_id="BA_001", source="bundesagentur", title_normalized="data engineer"
+        )
+        indeed = _make_record(
+            job_id="IN_001", source="indeed", title_normalized="product manager"
+        )
         deduplicate([ba, indeed])
         assert indeed["is_duplicate"] is False
 
     def test_date_outside_window_no_dedup(self) -> None:
-        ba = _make_record(job_id="BA_001", source="bundesagentur", posted_date=date(2026, 5, 1))
-        indeed = _make_record(job_id="IN_001", source="indeed", posted_date=date(2026, 5, 10))  # 9 days
+        ba = _make_record(
+            job_id="BA_001", source="bundesagentur", posted_date=date(2026, 5, 1)
+        )
+        indeed = _make_record(
+            job_id="IN_001", source="indeed", posted_date=date(2026, 5, 10)
+        )  # 9 days
         deduplicate([ba, indeed])
         assert indeed["is_duplicate"] is False
 
     def test_date_exactly_at_window_boundary_deduped(self) -> None:
-        ba = _make_record(job_id="BA_001", source="bundesagentur", posted_date=date(2026, 5, 1))
-        indeed = _make_record(job_id="IN_001", source="indeed", posted_date=date(2026, 5, 8))  # 7 days
+        ba = _make_record(
+            job_id="BA_001", source="bundesagentur", posted_date=date(2026, 5, 1)
+        )
+        indeed = _make_record(
+            job_id="IN_001", source="indeed", posted_date=date(2026, 5, 8)
+        )  # 7 days
         deduplicate([ba, indeed])
         assert indeed["is_duplicate"] is True
 
@@ -114,7 +131,9 @@ class TestPassTwoCrossSourceDedup:
 
     def test_company_too_different_no_dedup(self) -> None:
         ba = _make_record(job_id="BA_001", source="bundesagentur", company="Zalando SE")
-        indeed = _make_record(job_id="IN_001", source="indeed", company="Deutsche Bank AG")
+        indeed = _make_record(
+            job_id="IN_001", source="indeed", company="Deutsche Bank AG"
+        )
         deduplicate([ba, indeed])
         assert indeed["is_duplicate"] is False
 

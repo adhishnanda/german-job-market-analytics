@@ -1,4 +1,5 @@
 """Normalise raw job dicts from all sources into a common schema."""
+
 from __future__ import annotations
 
 import logging
@@ -42,6 +43,7 @@ def _parse_posted_date(raw: str | None) -> date | None:
     logger.warning("Unrecognised posted_date format: %r", raw)
     return None
 
+
 _WORK_MODEL_MAP: dict[str, str] = {
     "VOLLSTAENDIG_IM_HOMEOFFICE": "REMOTE",
     "NACH_VEREINBARUNG": "HYBRID",
@@ -50,11 +52,40 @@ _WORK_MODEL_MAP: dict[str, str] = {
 
 # Role category taxonomy — ordered, first match wins
 _ROLE_TAXONOMY: list[tuple[str, list[str]]] = [
-    ("Data Engineering", ["data engineer", "etl", "pipeline", "data platform", "data infrastructure"]),
-    ("Analytics Engineering", ["analytics engineer", "dbt", "data modelling", "data modeling"]),
-    ("Data Science / ML", ["data scientist", "machine learning", "ml engineer", "deep learning", "nlp", "computer vision"]),
-    ("Data Analysis / BI", ["data analyst", "business intelligence", "bi developer", "reporting", "power bi", "tableau"]),
-    ("ML Engineering", ["ml engineer", "mlops", "model deployment", "feature engineering"]),
+    (
+        "Data Engineering",
+        ["data engineer", "etl", "pipeline", "data platform", "data infrastructure"],
+    ),
+    (
+        "Analytics Engineering",
+        ["analytics engineer", "dbt", "data modelling", "data modeling"],
+    ),
+    (
+        "Data Science / ML",
+        [
+            "data scientist",
+            "machine learning",
+            "ml engineer",
+            "deep learning",
+            "nlp",
+            "computer vision",
+        ],
+    ),
+    (
+        "Data Analysis / BI",
+        [
+            "data analyst",
+            "business intelligence",
+            "bi developer",
+            "reporting",
+            "power bi",
+            "tableau",
+        ],
+    ),
+    (
+        "ML Engineering",
+        ["ml engineer", "mlops", "model deployment", "feature engineering"],
+    ),
     ("Data Architect", ["data architect", "data mesh", "lakehouse"]),
 ]
 

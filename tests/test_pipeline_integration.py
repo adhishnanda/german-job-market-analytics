@@ -1,4 +1,5 @@
 """Cross-source pipeline integration test: 4 sources → normalize → deduplicate → load."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -26,11 +27,13 @@ def _ba_raw() -> dict[str, Any]:
         "referenznummer": "ref0001",
         "stellenangebotsTitel": "Data Engineer",
         "firma": "BA Company GmbH",
-        "stellenlokationen": [{
-            "adresse": {"ort": "Berlin", "bundesland": "BERLIN", "plz": "10247"},
-            "breite": 52.5,
-            "laenge": 13.4,
-        }],
+        "stellenlokationen": [
+            {
+                "adresse": {"ort": "Berlin", "bundesland": "BERLIN", "plz": "10247"},
+                "breite": 52.5,
+                "laenge": 13.4,
+            }
+        ],
         "veroeffentlichungszeitraum": {"von": "2026-05-15"},
         "arbeitszeitVollzeit": True,
         "homeofficetyp": "KEIN_HOMEOFFICE",
@@ -121,12 +124,14 @@ def mem_conn() -> duckdb.DuckDBPyConnection:
 @pytest.fixture()
 def four_source_records() -> list[dict[str, Any]]:
     """Processed records for all 4 sources with no intentional cross-source duplicates."""
-    return _run_pipeline([
-        (_ba_raw(), "bundesagentur"),
-        (_indeed_raw(), "indeed"),
-        (_stepstone_raw(), "stepstone"),
-        (_linkedin_raw(), "linkedin"),
-    ])
+    return _run_pipeline(
+        [
+            (_ba_raw(), "bundesagentur"),
+            (_indeed_raw(), "indeed"),
+            (_stepstone_raw(), "stepstone"),
+            (_linkedin_raw(), "linkedin"),
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +157,9 @@ class TestCrossSourcePipelineLoad:
         load_to_connection(four_source_records, mem_conn)
         sources = {
             row[0]
-            for row in mem_conn.execute("SELECT DISTINCT source FROM jobs_raw").fetchall()
+            for row in mem_conn.execute(
+                "SELECT DISTINCT source FROM jobs_raw"
+            ).fetchall()
         }
         assert sources == {"bundesagentur", "indeed", "stepstone", "linkedin"}
 
@@ -261,9 +268,9 @@ class TestCrossSourceDedup:
         ba["skills"] = extract_skills(ba.get("description_raw") or "")
 
         li_raw = _linkedin_raw()
-        li_raw["title_raw"] = "Data Engineer"       # match BA title
-        li_raw["company_raw"] = "BA Company GmbH"   # match BA company
-        li_raw["posted_at_raw"] = "2026-05-15"       # match BA posted_date
+        li_raw["title_raw"] = "Data Engineer"  # match BA title
+        li_raw["company_raw"] = "BA Company GmbH"  # match BA company
+        li_raw["posted_at_raw"] = "2026-05-15"  # match BA posted_date
         li = normalize(li_raw, "linkedin")
         li["skills"] = extract_skills(li.get("description_raw") or "")
 
@@ -272,8 +279,8 @@ class TestCrossSourceDedup:
 
         raw_count = mem_conn.execute("SELECT count(*) FROM jobs_raw").fetchone()[0]
         clean_count = mem_conn.execute("SELECT count(*) FROM jobs_clean").fetchone()[0]
-        assert raw_count == 2       # both stored
-        assert clean_count == 1     # only BA is canonical
+        assert raw_count == 2  # both stored
+        assert clean_count == 1  # only BA is canonical
 
     def test_ba_record_is_canonical_not_linkedin(
         self, mem_conn: duckdb.DuckDBPyConnection
@@ -291,7 +298,5 @@ class TestCrossSourceDedup:
         deduped = deduplicate([ba, li])
         load_to_connection(deduped, mem_conn)
 
-        canonical = mem_conn.execute(
-            "SELECT source FROM jobs_clean"
-        ).fetchone()[0]
+        canonical = mem_conn.execute("SELECT source FROM jobs_clean").fetchone()[0]
         assert canonical == "bundesagentur"

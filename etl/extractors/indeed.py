@@ -1,4 +1,5 @@
 """Extractor for Indeed job postings via RSS feeds (IN_)."""
+
 from __future__ import annotations
 
 import csv

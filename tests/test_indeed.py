@@ -1,4 +1,5 @@
 """Tests for etl/extractors/indeed.py."""
+
 from __future__ import annotations
 
 import csv
@@ -84,11 +85,16 @@ class TestCityFromUrl:
         assert _city_from_url(_FEED_URL) == "Berlin"
 
     def test_deutschland_extracted(self) -> None:
-        url = "https://de.indeed.com/rss?q=Business+Intelligence&l=Deutschland&sort=date"
+        url = (
+            "https://de.indeed.com/rss?q=Business+Intelligence&l=Deutschland&sort=date"
+        )
         assert _city_from_url(url) == "Deutschland"
 
     def test_missing_l_param_returns_none(self) -> None:
-        assert _city_from_url("https://de.indeed.com/rss?q=Data+Engineer&sort=date") is None
+        assert (
+            _city_from_url("https://de.indeed.com/rss?q=Data+Engineer&sort=date")
+            is None
+        )
 
     def test_url_encoded_spaces_decoded(self) -> None:
         url = "https://de.indeed.com/rss?q=Data+Engineer&l=Frankfurt+am+Main"
@@ -180,23 +186,31 @@ class TestParseEntry:
 class TestFetchFeed:
     def test_returns_one_dict_per_entry(self) -> None:
         entries = [_make_entry(i) for i in range(3)]
-        with patch("etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)):
+        with patch(
+            "etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)
+        ):
             result = _fetch_feed(_FEED_URL)
         assert len(result) == 3
 
     def test_records_have_correct_structure(self) -> None:
         entries = [_make_entry(0)]
-        with patch("etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)):
+        with patch(
+            "etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)
+        ):
             result = _fetch_feed(_FEED_URL)
         assert result[0]["source"] == "indeed"
         assert result[0]["city_raw"] == "Berlin"
 
     def test_empty_entries_returns_empty_list(self) -> None:
-        with patch("etl.extractors.indeed.feedparser.parse", return_value=_make_parsed([])):
+        with patch(
+            "etl.extractors.indeed.feedparser.parse", return_value=_make_parsed([])
+        ):
             result = _fetch_feed(_FEED_URL)
         assert result == []
 
-    def test_http_404_returns_empty_list(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_http_404_returns_empty_list(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         with patch(
             "etl.extractors.indeed.feedparser.parse",
             return_value=_make_parsed([], status=404),
@@ -206,7 +220,9 @@ class TestFetchFeed:
         assert result == []
         assert "404" in caplog.text
 
-    def test_bozo_with_no_entries_returns_empty_list(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_bozo_with_no_entries_returns_empty_list(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         exc = Exception("malformed feed")
         with patch(
             "etl.extractors.indeed.feedparser.parse",
@@ -217,7 +233,9 @@ class TestFetchFeed:
         assert result == []
         assert "parse error" in caplog.text.lower()
 
-    def test_feedparser_exception_returns_empty_list(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_feedparser_exception_returns_empty_list(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         with patch(
             "etl.extractors.indeed.feedparser.parse",
             side_effect=RuntimeError("network down"),
@@ -321,7 +339,9 @@ class TestFetchJobs:
 
     def test_all_records_have_source_indeed(self) -> None:
         entries = [_make_entry(i) for i in range(5)]
-        with patch("etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)):
+        with patch(
+            "etl.extractors.indeed.feedparser.parse", return_value=_make_parsed(entries)
+        ):
             with patch("etl.extractors.indeed.time.sleep"):
                 result = fetch_jobs(["url_1"])
         assert all(r["source"] == "indeed" for r in result)

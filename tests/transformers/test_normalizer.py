@@ -1,4 +1,5 @@
 """Tests for the normalizer transformer."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -19,12 +20,35 @@ from etl.transformers.normalizer import (
 # ---------------------------------------------------------------------------
 
 _CANONICAL_FIELDS = {
-    "job_id", "source", "source_keyword", "source_city", "snapshot_date",
-    "fetched_at", "url", "title_raw", "description_raw", "salary_raw",
-    "title_normalized", "company", "city", "region", "country", "postal_code",
-    "lat", "lon", "posted_date", "employment_type", "work_model", "language",
-    "role_category", "skills", "salary_min", "salary_max", "salary_currency",
-    "is_duplicate", "canonical_id",
+    "job_id",
+    "source",
+    "source_keyword",
+    "source_city",
+    "snapshot_date",
+    "fetched_at",
+    "url",
+    "title_raw",
+    "description_raw",
+    "salary_raw",
+    "title_normalized",
+    "company",
+    "city",
+    "region",
+    "country",
+    "postal_code",
+    "lat",
+    "lon",
+    "posted_date",
+    "employment_type",
+    "work_model",
+    "language",
+    "role_category",
+    "skills",
+    "salary_min",
+    "salary_max",
+    "salary_currency",
+    "is_duplicate",
+    "canonical_id",
 }
 
 
@@ -104,10 +128,15 @@ class TestAssignRoleCategory:
         assert _assign_role_category("senior data engineer") == "Data Engineering"
 
     def test_analytics_engineering(self) -> None:
-        assert _assign_role_category("analytics engineer dbt") == "Analytics Engineering"
+        assert (
+            _assign_role_category("analytics engineer dbt") == "Analytics Engineering"
+        )
 
     def test_data_science(self) -> None:
-        assert _assign_role_category("data scientist machine learning") == "Data Science / ML"
+        assert (
+            _assign_role_category("data scientist machine learning")
+            == "Data Science / ML"
+        )
 
     def test_data_analysis(self) -> None:
         assert _assign_role_category("data analyst power bi") == "Data Analysis / BI"
@@ -145,7 +174,10 @@ class TestNormalizeBaFields:
         assert result["title_raw"] == "Senior Data Engineer (w/m/d)"
 
     def test_title_normalized_lowercased_and_stripped(self) -> None:
-        result = normalize(_make_ba_raw(stellenangebotsTitel="  Senior Data Engineer  "), "bundesagentur")
+        result = normalize(
+            _make_ba_raw(stellenangebotsTitel="  Senior Data Engineer  "),
+            "bundesagentur",
+        )
         assert result["title_normalized"] == "senior data engineer"
 
     def test_company_mapped(self) -> None:
@@ -190,7 +222,9 @@ class TestNormalizeBaFields:
         assert result["posted_date"] is None
 
     def test_work_model_mapped(self) -> None:
-        result = normalize(_make_ba_raw(homeofficetyp="NACH_VEREINBARUNG"), "bundesagentur")
+        result = normalize(
+            _make_ba_raw(homeofficetyp="NACH_VEREINBARUNG"), "bundesagentur"
+        )
         assert result["work_model"] == "HYBRID"
 
     def test_employment_type_mapped(self) -> None:
@@ -198,7 +232,9 @@ class TestNormalizeBaFields:
         assert result["employment_type"] == "PART_TIME"
 
     def test_role_category_assigned(self) -> None:
-        result = normalize(_make_ba_raw(stellenangebotsTitel="Data Engineer"), "bundesagentur")
+        result = normalize(
+            _make_ba_raw(stellenangebotsTitel="Data Engineer"), "bundesagentur"
+        )
         assert result["role_category"] == "Data Engineering"
 
     def test_url_constructed_from_referenznummer(self) -> None:
@@ -230,7 +266,9 @@ class TestNormalizeBaFields:
         assert result["description_raw"] == ""
 
     def test_description_raw_preserved_when_present(self) -> None:
-        result = normalize(_make_ba_raw(description_raw="We need Python skills."), "bundesagentur")
+        result = normalize(
+            _make_ba_raw(description_raw="We need Python skills."), "bundesagentur"
+        )
         assert result["description_raw"] == "We need Python skills."
 
 
@@ -242,12 +280,18 @@ class TestNormalizeBaFields:
 class TestNormalizeLanguage:
     def test_language_detected_english(self) -> None:
         with patch("etl.transformers.normalizer.detect", return_value="en"):
-            result = normalize(_make_ba_raw(description_raw="We are looking for a skilled engineer."), "bundesagentur")
+            result = normalize(
+                _make_ba_raw(description_raw="We are looking for a skilled engineer."),
+                "bundesagentur",
+            )
         assert result["language"] == "en"
 
     def test_language_detected_german(self) -> None:
         with patch("etl.transformers.normalizer.detect", return_value="de"):
-            result = normalize(_make_ba_raw(description_raw="Wir suchen einen erfahrenen Ingenieur."), "bundesagentur")
+            result = normalize(
+                _make_ba_raw(description_raw="Wir suchen einen erfahrenen Ingenieur."),
+                "bundesagentur",
+            )
         assert result["language"] == "de"
 
     def test_language_unknown_when_description_empty(self) -> None:

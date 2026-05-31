@@ -1,4 +1,5 @@
 """Load normalised job records into DuckDB."""
+
 from __future__ import annotations
 
 import logging
@@ -132,7 +133,10 @@ def load_to_connection(
     for job in jobs:
         row = {col: job.get(col) for col in _COLUMNS}
         # DuckDB TIMESTAMP is tz-naive; strip UTC tzinfo (value is already UTC).
-        if isinstance(row.get("fetched_at"), datetime) and row["fetched_at"].tzinfo is not None:
+        if (
+            isinstance(row.get("fetched_at"), datetime)
+            and row["fetched_at"].tzinfo is not None
+        ):
             row["fetched_at"] = row["fetched_at"].replace(tzinfo=None)
         rows.append(row)
 

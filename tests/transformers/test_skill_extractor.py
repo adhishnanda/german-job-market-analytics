@@ -1,7 +1,7 @@
 """Tests for the skill extractor."""
+
 from __future__ import annotations
 
-import pytest
 
 from etl.transformers.skill_extractor import SKILL_MAP, extract_skills
 
@@ -14,7 +14,10 @@ class TestExtractSkillsBasic:
         assert extract_skills("   \n\t  ") == []
 
     def test_no_skills_in_text_returns_empty(self) -> None:
-        assert extract_skills("Wir bieten ein tolles Team und flexible Arbeitszeiten.") == []
+        assert (
+            extract_skills("Wir bieten ein tolles Team und flexible Arbeitszeiten.")
+            == []
+        )
 
     def test_single_skill_detected(self) -> None:
         assert extract_skills("We need strong Python experience.") == ["Python"]

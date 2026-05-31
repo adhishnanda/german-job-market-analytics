@@ -1,4 +1,5 @@
 """Post-load data quality checker for jobs_raw in DuckDB."""
+
 from __future__ import annotations
 
 import logging
@@ -12,10 +13,10 @@ from etl.loaders.duckdb_loader import DEFAULT_DB_PATH
 logger = logging.getLogger(__name__)
 
 # Thresholds
-_NULL_RATE_THRESHOLD = 0.20       # flag if null rate > 20% for a non-salary field
-_DUP_RATE_THRESHOLD = 0.30        # flag if global duplicate rate > 30%
+_NULL_RATE_THRESHOLD = 0.20  # flag if null rate > 20% for a non-salary field
+_DUP_RATE_THRESHOLD = 0.30  # flag if global duplicate rate > 30%
 _SKILL_COVERAGE_THRESHOLD = 0.50  # flag if < 50% of canonical records have skills
-_DATE_WINDOW_DAYS = 90            # flag postings older than 90 days
+_DATE_WINDOW_DAYS = 90  # flag postings older than 90 days
 
 # Fields checked for null rate (per source); salary_min excluded — expected high
 _NULL_CHECK_FIELDS = ["city", "posted_date", "company", "title_normalized"]
@@ -72,7 +73,9 @@ def check(db_path: Path = DEFAULT_DB_PATH) -> bool:
     # -----------------------------------------------------------------------
     # 2. Null rates per field per source — flag if > 20%
     # -----------------------------------------------------------------------
-    print(f"\n[2] Null rates per field per source  (threshold {int(_NULL_RATE_THRESHOLD * 100)}%)")
+    print(
+        f"\n[2] Null rates per field per source  (threshold {int(_NULL_RATE_THRESHOLD * 100)}%)"
+    )
     field_issues = False
     for field in _NULL_CHECK_FIELDS:
         field_rows = conn.execute(
@@ -148,7 +151,11 @@ def check(db_path: Path = DEFAULT_DB_PATH) -> bool:
         print(f"  Duplicates           : {dups}")
         print(f"  Duplicate rate       : {dup_pct}%")
         if dup_pct > _DUP_RATE_THRESHOLD * 100:
-            print(_fail(f"Duplicate rate {dup_pct}% exceeds threshold {int(_DUP_RATE_THRESHOLD * 100)}%"))
+            print(
+                _fail(
+                    f"Duplicate rate {dup_pct}% exceeds threshold {int(_DUP_RATE_THRESHOLD * 100)}%"
+                )
+            )
             all_pass = False
         else:
             print(_ok("Duplicate rate within threshold"))
@@ -156,7 +163,9 @@ def check(db_path: Path = DEFAULT_DB_PATH) -> bool:
     # -----------------------------------------------------------------------
     # 5. Skill extraction coverage — flag if < 50% of canonical records
     # -----------------------------------------------------------------------
-    print(f"\n[5] Skill extraction coverage  (threshold {int(_SKILL_COVERAGE_THRESHOLD * 100)}%)")
+    print(
+        f"\n[5] Skill extraction coverage  (threshold {int(_SKILL_COVERAGE_THRESHOLD * 100)}%)"
+    )
     row = conn.execute(
         """
         SELECT
@@ -175,7 +184,11 @@ def check(db_path: Path = DEFAULT_DB_PATH) -> bool:
         print(f"  With >=1 skill       : {with_skills}")
         print(f"  Coverage             : {coverage_pct}%")
         if coverage_pct < _SKILL_COVERAGE_THRESHOLD * 100:
-            print(_fail(f"Coverage {coverage_pct}% below threshold {int(_SKILL_COVERAGE_THRESHOLD * 100)}%"))
+            print(
+                _fail(
+                    f"Coverage {coverage_pct}% below threshold {int(_SKILL_COVERAGE_THRESHOLD * 100)}%"
+                )
+            )
             all_pass = False
         else:
             print(_ok("Skill coverage within threshold"))

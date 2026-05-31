@@ -1,4 +1,5 @@
 """Extractor for Stepstone job postings via HTML scraping (SS_)."""
+
 from __future__ import annotations
 
 import json
@@ -106,7 +107,7 @@ def _parse_cards(html: str, keyword: str, location: str) -> list[dict[str, Any]]
         # Job ID is in id="job-item-{numeric_id}"
         card_id: str = card.get("id") or ""
         if card_id.startswith("job-item-"):
-            job_id_raw = card_id[len("job-item-"):]
+            job_id_raw = card_id[len("job-item-") :]
         else:
             job_id_raw = card_id
         if not job_id_raw:

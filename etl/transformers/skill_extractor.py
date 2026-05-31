@@ -1,4 +1,5 @@
 """Extract tech-skill mentions from job description text."""
+
 from __future__ import annotations
 
 import re

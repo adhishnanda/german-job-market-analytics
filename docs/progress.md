@@ -95,10 +95,11 @@
 - [x] Update requirements.txt to pin apache-airflow==3.2.2 + providers-standard==1.13.1
 - [x] Commit and push
 
-### Day 12
-- [ ] Build analytics/aggregations.py (skill counts, role counts, salary dist)
-- [ ] Write and test core SQL queries in DuckDB
-- [ ] Commit and push
+### Day 12 — 2026-05-31
+- [x] Build analytics/aggregations.py: five SQL aggregation functions over jobs_clean
+- [x] Write tests/analytics/test_aggregations.py: 26 tests, in-memory DuckDB fixture
+- [x] Fix pre-existing ruff F401/F541 warnings across 4 existing files (ruff --fix)
+- [x] Commit and push
 
 ### Day 13
 - [ ] Build dashboard/app.py — Streamlit skeleton + DuckDB connection

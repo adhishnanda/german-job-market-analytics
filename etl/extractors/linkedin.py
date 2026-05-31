@@ -1,4 +1,5 @@
 """Extractor for LinkedIn job postings from manually collected CSV files (LI_)."""
+
 from __future__ import annotations
 
 import csv
@@ -54,9 +55,7 @@ def _validate_columns(fieldnames: list[str], csv_path: Path) -> None:
     """Raise ValueError listing missing required columns for the given file."""
     missing = REQUIRED_COLUMNS - frozenset(fieldnames)
     if missing:
-        raise ValueError(
-            f"{csv_path}: missing required columns: {sorted(missing)}"
-        )
+        raise ValueError(f"{csv_path}: missing required columns: {sorted(missing)}")
 
 
 def _parse_row(
@@ -133,7 +132,9 @@ def _read_csv(csv_path: Path) -> list[dict[str, Any]]:
         except UnicodeDecodeError as exc:
             last_exc = exc
             continue
-    raise ValueError(f"Could not decode {csv_path} as utf-8-sig or cp1252") from last_exc
+    raise ValueError(
+        f"Could not decode {csv_path} as utf-8-sig or cp1252"
+    ) from last_exc
 
 
 def read_csvs(

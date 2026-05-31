@@ -1,4 +1,5 @@
 """Reusable chart helpers for the Streamlit dashboard."""
+
 from __future__ import annotations
 
 import pandas as pd

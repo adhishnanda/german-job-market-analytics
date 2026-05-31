@@ -23,15 +23,21 @@ SQL query rather than four manual searches.
 | Source | Method | ID prefix | Request gap |
 |---|---|---|---|
 | Bundesagentur für Arbeit | REST API v6 (official public endpoint) | `BA_` | 2 s |
-| Indeed Germany | RSS feeds via feedparser | `IN_` | 3 s |
+| Indeed Germany | RSS feeds via feedparser — **blocked (HTTP 403); no live data collected** | `IN_` | 3 s |
 | Stepstone | HTML scraping (requests + BeautifulSoup4) | `SS_` | 10–18 s random |
 | LinkedIn | Manual CSV export | `LI_` | n/a |
+
+> **Indeed status:** All five `de.indeed.com/rss` endpoints return HTTP 403 on
+> every live run. The extractor code and fixture-based tests are retained in the
+> repo but Indeed is not an active data source. The pipeline runs on
+> Bundesagentur, Stepstone, and LinkedIn. See `docs/decisions.md` for the full
+> rationale.
 
 Keywords tracked: `Data Engineer`, `Data Analyst`, `Data Scientist`,
 `Analytics Engineer`, `BI Engineer`, `Machine Learning Engineer`
 
-Current geographic scope: Berlin (Stepstone), all major German cities via BA
-and Indeed.
+Current geographic scope: Berlin (Stepstone and LinkedIn), all major German
+cities via BA.
 
 ---
 
@@ -39,9 +45,10 @@ and Indeed.
 
 ```
 Bundesagentur API ──┐
-Indeed RSS          ├──► Extract ──► Normalize ──► Deduplicate ──► Load (DuckDB) ──► Aggregate ──► Dashboard
-Stepstone HTML      │
+Stepstone HTML      ├──► Extract ──► Normalize ──► Deduplicate ──► Load (DuckDB) ──► Aggregate ──► Dashboard
 LinkedIn CSV ───────┘ (manual)
+
+Indeed RSS          ✗  blocked (HTTP 403) — extractor retained, no live data
 ```
 
 **Extract** — each source has its own extractor in `etl/extractors/`. Every
@@ -172,9 +179,9 @@ mkdir -p data/raw data/processed data/db
 
 ```bash
 python -m etl.extractors.bundesagentur
-python -m etl.extractors.indeed
 python -m etl.extractors.stepstone
 # LinkedIn: place CSV files in data/raw/linkedin/YYYY-MM-DD/ before running the loader
+# Indeed: extractor present but returns [] — RSS endpoint blocked (HTTP 403)
 python -m etl.loaders.duckdb_loader
 ```
 
@@ -261,9 +268,10 @@ sequential — no parallelism.
 
 **Source characteristics differ.** The Bundesagentur endpoint is an official
 public API used by their own job-search SPA, accessed with the same API key
-the app itself uses. Indeed and Stepstone are scraped from public search
-pages. LinkedIn data is collected manually through LinkedIn's own CSV export
-tool — no automated LinkedIn scraping.
+the app itself uses. Stepstone is scraped from public search pages. Indeed's
+RSS endpoint returns HTTP 403 on all requests and is not an active source.
+LinkedIn data is collected manually through LinkedIn's own CSV export tool —
+no automated LinkedIn scraping.
 
 **Raw snapshots are immutable.** `title_raw` and `description_raw` are never
 modified after extraction. All transformations operate on derived fields.

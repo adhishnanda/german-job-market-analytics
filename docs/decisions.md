@@ -300,6 +300,20 @@ using the same approach as Stepstone. If the HTML route is also blocked or
 legally ambiguous, Indeed will be dropped from the active source list entirely.
 No pipeline code changes required in the interim.
 
+### Indeed dropped as active source — final decision
+The live run confirmed HTTP 403 across all five RSS endpoints on every attempt.
+The Week 3 HTML-scraping evaluation was cancelled: attempting to scrape
+Indeed's HTML search results carries higher legal ambiguity than Stepstone, and
+the live run results leave no room for doubt about the RSS route. Indeed is
+removed from the active pipeline as of 2026-05-31.
+Code retention: `etl/extractors/indeed.py` and its fixture-based tests remain
+in the repo. The extractor can be re-enabled if a compliant access path exists
+later (e.g. an official partner API). The `IN_` job-ID prefix and deduplicator
+priority slot (index 1) are left in place to avoid disrupting cross-source
+dedup logic if Indeed is re-added.
+Active sources going forward: Bundesagentur, Stepstone, LinkedIn.
+README updated to reflect this.
+
 ### Stepstone HTML breaking change: job ID and date fields
 Stepstone's search-results HTML changed between Day 7 and Day 10:
 - Job ID moved from `data-job-id="..."` attribute to `id="job-item-{id}"`.

@@ -40,3 +40,6 @@ webserver_config.py
 # OS
 .DS_Store
 Thumbs.db
+
+
+PROJECT_HANDOFF.md

@@ -401,3 +401,25 @@ Matches the decision logged in the LinkedIn extractor data-quality section above
 The employment_type hint concatenates the raw CSV `employment_type` column with
 `description_raw` before keyword scanning, so CSV values like "Full-time" are
 matched by the same `\bfull[\-\s]?time\b` regex used for other sources.
+
+## 2026-05-31 — Airflow DAG (Day 11)
+
+### Airflow upgraded from 2.9.3 to 3.2.2
+Installing `apache-airflow-providers-standard` (required for `FileSensor`) caused
+pip to resolve and install `apache-airflow==3.2.2`, replacing the pinned 2.9.3.
+The upgrade was accepted rather than fought: Airflow 3.x is the current stable
+release, and the pipeline's DAG logic is simple enough that the migration cost was
+low. `requirements.txt` now pins `apache-airflow==3.2.2` and adds
+`apache-airflow-providers-standard==1.13.1` as an explicit dependency.
+
+### days_ago replaced with pendulum.now("UTC").subtract(days=1)
+`airflow.utils.dates.days_ago` was removed in Airflow 3.0. The DAG
+`start_date` now uses `pendulum.now("UTC").subtract(days=1)`, which is the
+idiomatic Airflow 3.x equivalent. `pendulum` is a direct dependency of
+apache-airflow and is available without a separate install.
+
+### dag.schedule_interval removed in Airflow 3.x; use dag.schedule
+The `DAG.schedule_interval` attribute was removed in Airflow 3.0. The stored
+schedule string is now accessed via `dag.schedule`, which returns `"@daily"` when
+the DAG is constructed with `schedule="@daily"`. The test suite checks
+`dag.schedule == "@daily"` accordingly.

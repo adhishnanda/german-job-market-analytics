@@ -88,12 +88,12 @@
 
 ## Week 3 — Airflow and Dashboard
 
-### Day 11
-- [ ] Set up Airflow locally (airflow standalone)
-- [ ] Build airflow/dags/job_market_pipeline.py skeleton
-- [ ] Define 4 extract tasks + downstream tasks
-- [ ] Test DAG loads without errors
-- [ ] Commit and push
+### Day 11 — 2026-05-31
+- [x] Install apache-airflow-providers-standard (FileSensor); Airflow upgraded 2.9.3 → 3.2.2
+- [x] Build airflow/dags/job_market_pipeline.py: 6 tasks, @daily, FileSensor for LinkedIn CSV
+- [x] Write tests/test_dag_loads.py: 9 tests verifying DAG structure offline
+- [x] Update requirements.txt to pin apache-airflow==3.2.2 + providers-standard==1.13.1
+- [x] Commit and push
 
 ### Day 12
 - [ ] Build analytics/aggregations.py (skill counts, role counts, salary dist)

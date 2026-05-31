@@ -23,17 +23,17 @@ from etl.extractors.stepstone import (
 
 _TWO_CARD_HTML = """
 <html><body>
-<article data-at="job-item" data-job-id="123456">
+<article data-at="job-item" id="job-item-123456">
   <a data-at="job-item-title" href="/stellenangebot/senior-data-engineer-123456">Senior Data Engineer</a>
   <span data-at="job-item-company-name">TechCorp GmbH</span>
   <span data-at="job-item-location">Berlin</span>
-  <time datetime="2026-05-30">Heute</time>
+  <time>vor 1 Tagen</time>
 </article>
-<article data-at="job-item" data-job-id="789012">
+<article data-at="job-item" id="job-item-789012">
   <a data-at="job-item-title" href="/stellenangebot/data-analyst-789012">Data Analyst</a>
   <span data-at="job-item-company-name">Analytics AG</span>
   <span data-at="job-item-location">Berlin, Deutschland</span>
-  <time datetime="2026-05-29">Gestern</time>
+  <time>Gestern</time>
 </article>
 </body></html>
 """
@@ -157,8 +157,13 @@ class TestParseCards:
         first = next(r for r in records if r["job_id"] == "SS_123456")
         assert first["location_raw"] == "Berlin"
 
-    def test_posted_date_raw_from_datetime_attr(self) -> None:
-        records = _parse_cards(_TWO_CARD_HTML, "data-engineer", "berlin")
+    def test_posted_date_raw_from_timeago(self) -> None:
+        from datetime import date
+        from unittest.mock import patch as _patch
+        # "vor 1 Tagen" with today=2026-05-31 → 2026-05-30
+        with _patch("etl.extractors.stepstone.date") as mock_date:
+            mock_date.today.return_value = date(2026, 5, 31)
+            records = _parse_cards(_TWO_CARD_HTML, "data-engineer", "berlin")
         first = next(r for r in records if r["job_id"] == "SS_123456")
         assert first["posted_date_raw"] == "2026-05-30"
 
@@ -181,7 +186,7 @@ class TestParseCards:
     def test_empty_page_returns_empty_list(self) -> None:
         assert _parse_cards(_EMPTY_PAGE_HTML, "data-engineer", "berlin") == []
 
-    def test_card_without_data_job_id_skipped(self) -> None:
+    def test_card_without_id_skipped(self) -> None:
         html = """
         <html><body>
         <article data-at="job-item">
@@ -195,7 +200,7 @@ class TestParseCards:
     def test_missing_optional_fields_are_none(self) -> None:
         html = """
         <html><body>
-        <article data-at="job-item" data-job-id="999">
+        <article data-at="job-item" id="job-item-999">
           <a data-at="job-item-title" href="/job/999">Minimal Job</a>
         </article>
         </body></html>

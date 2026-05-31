@@ -73,12 +73,17 @@
 - [x] Build tests/test_pipeline_integration.py: 4-source fixture → normalize → deduplicate → load, 12 assertions
 - [ ] Commit and push
 
-### Day 10
-- [ ] Cross-source dedup pass: run deduplicator over real BA + LinkedIn sample data
-- [ ] Verify is_duplicate and canonical_id fields are populated correctly
-- [ ] Full pipeline dry run: all 4 sources → normalize → deduplicate → load
-- [ ] Check data quality: null rates, duplicate rate, posting date range
-- [ ] Fix any issues found
+### Day 10 — 2026-05-31
+- [x] Build etl/pipeline_runner.py (4-stage runner: extract → normalize → dedup → load + summary report)
+- [x] Build etl/data_quality.py (5 checks: source dist, null rates, date range, dup rate, skill coverage)
+- [x] Fix Stepstone _parse_cards: job ID moved to id="job-item-{n}", date now German timeago text
+- [x] Add _parse_german_timeago to stepstone.py for "vor N Tagen/Wochen/..." patterns
+- [x] Add max_pages parameter to stepstone.fetch_jobs for limited dry-run
+- [x] Fix LinkedIn CSV encoding: try utf-8-sig → cp1252 fallback
+- [x] Fix loader: drop_duplicates by job_id before INSERT (BA returns same job across keyword×city combos)
+- [x] Full pipeline dry run: BA=853, Indeed=0 (blocked), Stepstone=25, LinkedIn=20 → 898 records → 543 in DB
+- [x] Data quality run: Indeed blocked (flag), 63 old BA posts (expected), skill coverage 3.5% (structural)
+- [x] Log all Day 10 findings in docs/decisions.md
 - [ ] Commit and push
 
 ## Week 3 — Airflow and Dashboard

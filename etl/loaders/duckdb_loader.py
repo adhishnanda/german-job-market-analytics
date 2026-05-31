@@ -137,6 +137,14 @@ def load_to_connection(
         rows.append(row)
 
     df = pd.DataFrame(rows, columns=_COLUMNS)
+    # Within a batch the same job_id can appear multiple times when a job shows up
+    # under several keyword × city combos.  Keep the canonical record (is_duplicate=False)
+    # for each job_id; fall back to the first row if all are marked duplicate.
+    df = (
+        df.sort_values("is_duplicate", ascending=True)
+        .drop_duplicates(subset="job_id", keep="first")
+        .reset_index(drop=True)
+    )
     col_list = ", ".join(_COLUMNS)
 
     # INSERT OR REPLACE does not support list columns in DuckDB 1.1.x; and

@@ -114,16 +114,26 @@ def _parse_row(
 
 
 def _read_csv(csv_path: Path) -> list[dict[str, Any]]:
-    """Read one LinkedIn CSV; validate columns, skip invalid rows, return parsed records."""
-    records: list[dict[str, Any]] = []
-    with csv_path.open(newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        _validate_columns(list(reader.fieldnames or []), csv_path)
-        for row_index, row in enumerate(reader, start=2):  # row 1 is the header
-            record = _parse_row(row, row_index, csv_path)
-            if record is not None:
-                records.append(record)
-    return records
+    """Read one LinkedIn CSV; validate columns, skip invalid rows, return parsed records.
+
+    Tries UTF-8 (with BOM) first, then cp1252 for manually exported Windows CSVs.
+    """
+    last_exc: Exception | None = None
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            records: list[dict[str, Any]] = []
+            with csv_path.open(newline="", encoding=encoding) as fh:
+                reader = csv.DictReader(fh)
+                _validate_columns(list(reader.fieldnames or []), csv_path)
+                for row_index, row in enumerate(reader, start=2):  # row 1 is the header
+                    record = _parse_row(row, row_index, csv_path)
+                    if record is not None:
+                        records.append(record)
+            return records
+        except UnicodeDecodeError as exc:
+            last_exc = exc
+            continue
+    raise ValueError(f"Could not decode {csv_path} as utf-8-sig or cp1252") from last_exc
 
 
 def read_csvs(

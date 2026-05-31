@@ -6,7 +6,7 @@ import logging
 import random
 import re
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +45,37 @@ _UMLAUT_MAP = str.maketrans(
     {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"}
 )
 
+# German relative-date parsing: "vor X Tagen/Wochen/Monaten/Jahren", "Heute", "Gestern"
+_DE_TIMEAGO_RE = re.compile(
+    r"vor\s+(\d+)\s+(tage?n?|woche?n?|monat(?:en?)?|jahre?n?)",
+    re.IGNORECASE,
+)
+_DE_TIMEAGO_DAYS: dict[str, int] = {"tag": 1, "woc": 7, "mon": 30, "jah": 365}
+
+
+def _parse_german_timeago(text: str) -> str | None:
+    """Parse a German relative-time string to an approximate ISO date.
+
+    Handles "vor N Tagen/Wochen/Monaten/Jahren", "Heute", "Gestern".
+    Returns None for unrecognised patterns.
+    Approximation: 1 Monat = 30 days, 1 Jahr = 365 days (±2 days expected).
+    """
+    if not text:
+        return None
+    clean = text.strip().lower()
+    if clean == "heute":
+        return date.today().isoformat()
+    if clean == "gestern":
+        return (date.today() - timedelta(days=1)).isoformat()
+    m = _DE_TIMEAGO_RE.search(clean)
+    if m:
+        n = int(m.group(1))
+        unit_prefix = m.group(2)[:3].lower()
+        multiplier = _DE_TIMEAGO_DAYS.get(unit_prefix, 1)
+        return (date.today() - timedelta(days=n * multiplier)).isoformat()
+    logger.debug("Unrecognised German timeago: %r", text)
+    return None
+
 
 def _to_slug(text: str) -> str:
     """Convert a keyword or location to a Stepstone URL slug (lowercase, hyphens)."""
@@ -62,12 +93,22 @@ def _build_url(keyword_slug: str, location_slug: str, page: int) -> str:
 
 
 def _parse_cards(html: str, keyword: str, location: str) -> list[dict[str, Any]]:
-    """Parse job cards from a Stepstone search results HTML page."""
+    """Parse job cards from a Stepstone search results HTML page.
+
+    Job ID is now in id="job-item-{numeric_id}" (previously data-job-id).
+    Posted date comes from the <time> tag's text as a German relative string
+    ("vor X Tagen") parsed via _parse_german_timeago.
+    """
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.find_all("article", attrs={"data-at": "job-item"})
     records: list[dict[str, Any]] = []
     for card in cards:
-        job_id_raw = card.get("data-job-id", "")
+        # Job ID is in id="job-item-{numeric_id}"
+        card_id: str = card.get("id") or ""
+        if card_id.startswith("job-item-"):
+            job_id_raw = card_id[len("job-item-"):]
+        else:
+            job_id_raw = card_id
         if not job_id_raw:
             continue
 
@@ -86,8 +127,10 @@ def _parse_cards(html: str, keyword: str, location: str) -> list[dict[str, Any]]
         location_tag = card.find("span", attrs={"data-at": "job-item-location"})
         location_raw = location_tag.get_text(strip=True) if location_tag else None
 
-        time_tag = card.find("time", attrs={"datetime": True})
-        posted_date_raw = time_tag.get("datetime") if time_tag else None
+        # Date is a relative German string in <time> tag text; parse to ISO date.
+        time_tag = card.find("time")
+        timeago_text = time_tag.get_text(strip=True) if time_tag else None
+        posted_date_raw = _parse_german_timeago(timeago_text) if timeago_text else None
 
         records.append(
             {
@@ -132,8 +175,9 @@ def _save_snapshot(
 def fetch_jobs(
     keywords: list[str] | None = None,
     locations: list[str] | None = None,
+    max_pages: int = MAX_PAGES,
 ) -> list[dict[str, Any]]:
-    """Fetch up to MAX_PAGES per keyword × location pair.
+    """Fetch up to max_pages per keyword × location pair.
 
     Sleeps random.uniform(SLEEP_MIN, SLEEP_MAX) between every page request.
     On 403/429: logs warning and stops all remaining locations for that keyword.
@@ -157,7 +201,7 @@ def fetch_jobs(
                 break
             location_slug = _to_slug(location)
 
-            for page in range(1, MAX_PAGES + 1):
+            for page in range(1, max_pages + 1):
                 if request_count > 0:
                     time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
                 request_count += 1

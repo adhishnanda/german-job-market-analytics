@@ -287,6 +287,58 @@ collection is scoped to Berlin-area roles. This prevents `NULL` city values
 that would cause the deduplicator's city guard to silently drop cross-source
 matches for otherwise valid records.
 
+## 2026-05-31 — Day 10 pipeline dry run findings
+
+### Indeed RSS feeds permanently blocked
+All five `de.indeed.com/rss` feeds return HTTP 403 or 404 as of 2026-05-31.
+Indeed appears to have shut down or geo-blocked public RSS access.
+Decision: leave the extractor in place but treat Indeed as an inactive source for
+now. Source distribution check in `data_quality.py` will flag it until a replacement
+feed (e.g. official Job-Posting schema scrape or a partner API) is added.
+No pipeline changes required — the extractor returns [] gracefully.
+
+### Stepstone HTML breaking change: job ID and date fields
+Stepstone's search-results HTML changed between Day 7 and Day 10:
+- Job ID moved from `data-job-id="..."` attribute to `id="job-item-{id}"`.
+- Posted date moved from `<time datetime="YYYY-MM-DD">` to `<time>vor N Tagen</time>`
+  (German relative string, no `datetime` attribute).
+Both fields required parser updates in `_parse_cards`. A German relative-date
+parser (`_parse_german_timeago`) was added to stepstone.py, covering "vor N
+Tagen/Wochen/Monaten/Jahren", "Heute", and "Gestern".
+Two Stepstone cards (8%) had no `<time>` tag at all — `posted_date` is NULL for
+those records. This is within the 20% null-rate threshold.
+
+### BA API returns historical listings (up to 3+ years old)
+The live BA API search-result feed includes job postings from 2022 and 2023 that
+are still technically "open" in the system. Of 498 canonical BA records loaded:
+- 2 records from 2022–2023 (genuinely old, still in BA's index)
+- 31 records from 2025 (>90 days, still active)
+- 465 records from 2026 (current)
+The data quality 90-day date-range check correctly flags this. It is not a
+pipeline bug — the BA API does not filter by recency and exposes the full active
+index. The check serves as a data awareness signal, not an error to fix.
+
+### Skill coverage low (3.5%) — expected, not a bug
+Only 19 of 541 canonical records have at least one skill detected. The low rate
+is structural: BA search-list records include only title + metadata (no description);
+Stepstone search cards also have no description. Skills can only be extracted
+from LinkedIn descriptions (20 records) and any future Indeed/detail-page data.
+The 50% coverage threshold will be achievable once detail-page fetching is added
+for BA and Stepstone (Day 10 backlog item). For now, the flag is expected.
+
+### Loader dedup fix: drop_duplicates by job_id before INSERT
+The BA API returns the same `referenznummer` (and therefore same `BA_{id}`) for
+the same job posting across multiple keyword × city search combinations.
+The deduplicator marks the second and later occurrences as `is_duplicate=True`,
+but all occurrences share the same `job_id`. DuckDB's `job_id PRIMARY KEY` then
+rejects the second INSERT with a constraint error.
+Fix: in `load_to_connection`, sort records by `is_duplicate` ascending (canonical
+first) then `drop_duplicates(subset="job_id", keep="first")` before building the
+staging DataFrame. This ensures each `job_id` is inserted exactly once,
+preserving the canonical version's `is_duplicate=False` value.
+Cross-source duplicates (e.g. `LI_456` pointing to `BA_123`) have distinct
+`job_id` values and are unaffected — both records are stored.
+
 ## 2026-05-31 — Normalizer date unification (Day 9)
 
 ### _parse_posted_date replaces per-source inline parsing

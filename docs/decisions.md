@@ -248,3 +248,35 @@ registered view from being visible inside the transaction in DuckDB 1.1.3,
 causing the DELETE to silently match nothing. Removing `BEGIN/COMMIT` and
 relying on per-statement auto-commit resolves both issues. Atomicity is not a
 practical concern for an in-process, single-writer pipeline.
+
+## 2026-05-31 — LinkedIn extractor data quality (Day 9)
+
+### posted_at_raw is approximate for LinkedIn (±2 days)
+LinkedIn's UI shows relative timestamps ("2 weeks ago", "3 days ago") rather
+than absolute dates. The extractor converts these to ISO dates using fixed
+multiples (1 month = 30 days, 1 week = 7 days, 1 year = 365 days). The
+converted value can be off by up to ±2 days from the actual posting date.
+`posted_at_raw` stores the already-converted ISO string (not the original
+relative phrase) so downstream normalisation does not need to handle two date
+formats. Unrecognised strings (e.g. "last quarter") pass through unchanged.
+
+### applicant_count capped at 100 by LinkedIn UI
+LinkedIn truncates the applicant count display at "100+ applicants" and does
+not expose the real number via its public UI. Values manually entered above 100
+should be treated as the sentinel "at least 100". The extractor accepts any
+integer but callers should not rely on precision above 100. Non-integer values
+(e.g. "over 200") are logged as warnings and stored as `NULL`.
+
+### is_remote=True covers both remote and hybrid roles
+LinkedIn's search-result badge does not distinguish "fully remote" from
+"hybrid". Both appear as "Remote" in the UI, so `is_remote = True` in the CSV
+means only "not fully on-site". The normalizer maps this to
+`work_model = "UNKNOWN"` until LinkedIn exposes a structured work-model field
+that separates the two.
+
+### city_raw auto-filled to "Berlin" for LinkedIn manual collection
+The manual CSV collection workflow sometimes omits the city field. The
+extractor defaults empty or missing `city_raw` to `"Berlin"` because the
+collection is scoped to Berlin-area roles. This prevents `NULL` city values
+that would cause the deduplicator's city guard to silently drop cross-source
+matches for otherwise valid records.

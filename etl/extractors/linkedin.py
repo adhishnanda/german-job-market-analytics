@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import csv
 import logging
-from datetime import date
+import re
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,27 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_DIR = Path("data/raw/linkedin")
 
 REQUIRED_COLUMNS: frozenset[str] = frozenset({"job_id_raw", "title_raw"})
+
+_RELATIVE_DATE_RE = re.compile(
+    r"^(\d+)\s+(day|week|month|year)s?\s+ago$",
+    re.IGNORECASE,
+)
+_RELATIVE_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
+
+
+def _parse_relative_date(value: str) -> str:
+    """Convert a LinkedIn relative date string to an approximate ISO date.
+
+    Returns the original string unchanged when it does not match the pattern.
+    Approximation: 1 month = 30 days, 1 year = 365 days (±2 days expected).
+    """
+    m = _RELATIVE_DATE_RE.match(value.strip())
+    if not m:
+        return value
+    n = int(m.group(1))
+    unit = m.group(2).lower()
+    return (date.today() - timedelta(days=n * _RELATIVE_DAYS[unit])).isoformat()
+
 
 _RAW_FIELDS = [
     "source",
@@ -71,13 +93,18 @@ def _parse_row(
     elif is_remote_raw in {"false", "no", "0"}:
         is_remote = False
 
+    city_raw = (row.get("city_raw") or "").strip() or "Berlin"
+
+    posted_at_str = (row.get("posted_at_raw") or "").strip()
+    posted_at_raw = _parse_relative_date(posted_at_str) if posted_at_str else None
+
     return {
         "source": "linkedin",
         "job_id_raw": f"LI_{job_id_raw}",
         "title_raw": title_raw,
         "company_raw": (row.get("company_raw") or "").strip() or None,
-        "city_raw": (row.get("city_raw") or "").strip() or None,
-        "posted_at_raw": (row.get("posted_at_raw") or "").strip() or None,
+        "city_raw": city_raw,
+        "posted_at_raw": posted_at_raw,
         "description_raw": (row.get("description_raw") or "").strip() or None,
         "url": (row.get("url") or "").strip() or None,
         "employment_type": (row.get("employment_type") or "").strip() or None,

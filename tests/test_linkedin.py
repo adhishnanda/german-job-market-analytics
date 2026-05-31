@@ -9,6 +9,7 @@ import pytest
 
 from etl.extractors.linkedin import (
     REQUIRED_COLUMNS,
+    _parse_relative_date,
     _parse_row,
     _read_csv,
     _validate_columns,
@@ -174,7 +175,7 @@ class TestParseRow:
         record = _parse_row(row, 2, Path("f.csv"))
         assert record is not None
         assert record["company_raw"] is None
-        assert record["city_raw"] is None
+        assert record["city_raw"] == "Berlin"  # auto-filled when blank
         assert record["url"] is None
 
     def test_title_raw_preserved(self) -> None:
@@ -337,3 +338,173 @@ class TestReadCsvs:
         _write_csv(snap / "listings.csv", [_FULL_ROW])
         records = read_csvs(base_dir=tmp_path)
         assert len(records) == 1
+
+
+# ---------------------------------------------------------------------------
+# _parse_relative_date
+# ---------------------------------------------------------------------------
+
+
+class TestParseRelativeDate:
+    def test_days_ago(self) -> None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(2026, 5, 30)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            assert _parse_relative_date("3 days ago") == "2026-05-27"
+        finally:
+            li_mod.date = original
+
+    def test_weeks_ago(self) -> None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(2026, 5, 30)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            assert _parse_relative_date("2 weeks ago") == "2026-05-16"
+        finally:
+            li_mod.date = original
+
+    def test_months_ago(self) -> None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(2026, 5, 30)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            assert _parse_relative_date("1 month ago") == "2026-04-30"
+        finally:
+            li_mod.date = original
+
+    def test_singular_forms_accepted(self) -> None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(2026, 5, 30)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            assert _parse_relative_date("1 day ago") == "2026-05-29"
+            assert _parse_relative_date("1 week ago") == "2026-05-23"
+        finally:
+            li_mod.date = original
+
+    def test_iso_date_returned_unchanged(self) -> None:
+        assert _parse_relative_date("2026-05-28") == "2026-05-28"
+
+    def test_unrecognised_string_returned_unchanged(self) -> None:
+        assert _parse_relative_date("last quarter") == "last quarter"
+
+    def test_case_insensitive(self) -> None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(2026, 5, 30)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            assert _parse_relative_date("3 Days Ago") == "2026-05-27"
+        finally:
+            li_mod.date = original
+
+
+# ---------------------------------------------------------------------------
+# city_raw auto-fill (via _parse_row)
+# ---------------------------------------------------------------------------
+
+
+class TestCityAutoFill:
+    def test_blank_city_defaults_to_berlin(self) -> None:
+        row = {**_FULL_ROW, "city_raw": ""}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["city_raw"] == "Berlin"
+
+    def test_missing_city_key_defaults_to_berlin(self) -> None:
+        row = {k: v for k, v in _FULL_ROW.items() if k != "city_raw"}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["city_raw"] == "Berlin"
+
+    def test_explicit_city_preserved(self) -> None:
+        row = {**_FULL_ROW, "city_raw": "Munich"}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["city_raw"] == "Munich"
+
+    def test_whitespace_only_city_defaults_to_berlin(self) -> None:
+        row = {**_FULL_ROW, "city_raw": "   "}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["city_raw"] == "Berlin"
+
+
+# ---------------------------------------------------------------------------
+# posted_at_raw relative-date conversion (via _parse_row)
+# ---------------------------------------------------------------------------
+
+
+class TestPostedAtRawConversion:
+    def _patched_parse_row(
+        self, row: dict[str, str], fake_today: str
+    ) -> dict | None:
+        import etl.extractors.linkedin as li_mod
+        from datetime import date as _date
+
+        y, m, d = (int(x) for x in fake_today.split("-"))
+
+        class _FakeDate(_date):
+            @classmethod
+            def today(cls) -> "_FakeDate":  # type: ignore[override]
+                return cls(y, m, d)
+
+        original = li_mod.date
+        li_mod.date = _FakeDate  # type: ignore[assignment]
+        try:
+            return _parse_row(row, 2, Path("f.csv"))
+        finally:
+            li_mod.date = original
+
+    def test_relative_date_converted(self) -> None:
+        row = {**_FULL_ROW, "posted_at_raw": "2 weeks ago"}
+        record = self._patched_parse_row(row, "2026-05-30")
+        assert record is not None
+        assert record["posted_at_raw"] == "2026-05-16"
+
+    def test_iso_date_preserved(self) -> None:
+        row = {**_FULL_ROW, "posted_at_raw": "2026-05-28"}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["posted_at_raw"] == "2026-05-28"
+
+    def test_empty_posted_at_is_none(self) -> None:
+        row = {**_FULL_ROW, "posted_at_raw": ""}
+        record = _parse_row(row, 2, Path("f.csv"))
+        assert record is not None
+        assert record["posted_at_raw"] is None

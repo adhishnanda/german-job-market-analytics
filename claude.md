@@ -69,3 +69,8 @@ Load to DuckDB:   python -m etl.loaders.duckdb_loader
 ## Environment
 - Python version: 3.11 (use this interpreter explicitly)
 - Virtual environment: .venv/ (created with python3.11 -m venv .venv)
+
+## Data file rules
+- Always reference exact file paths when reading data
+- Never assume which CSV to read — always specify the full path
+- Confirm file path before running any analysis

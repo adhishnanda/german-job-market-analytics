@@ -10,6 +10,7 @@ from etl.transformers.normalizer import (
     _assign_role_category,
     _map_employment_type,
     _map_work_model,
+    _parse_posted_date,
     normalize,
 )
 
@@ -291,4 +292,132 @@ class TestNormalizeDownstreamDefaults:
 class TestNormalizeUnknownSource:
     def test_unknown_source_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown source"):
-            normalize(_make_ba_raw(), "stepstone")
+            normalize(_make_ba_raw(), "twitter")
+
+
+# ---------------------------------------------------------------------------
+# _parse_posted_date — all four supported formats
+# ---------------------------------------------------------------------------
+
+
+class TestParsePostedDate:
+    def test_iso_date_yyyy_mm_dd(self) -> None:
+        assert _parse_posted_date("2026-05-11") == date(2026, 5, 11)
+
+    def test_iso_datetime_with_time_component(self) -> None:
+        assert _parse_posted_date("2026-05-30T10:00:00") == date(2026, 5, 30)
+
+    def test_dd_mm_yyyy_linkedin_manual(self) -> None:
+        assert _parse_posted_date("30-05-2026") == date(2026, 5, 30)
+
+    def test_rfc2822_indeed_rss(self) -> None:
+        assert _parse_posted_date("Mon, 27 May 2026 10:00:00 GMT") == date(2026, 5, 27)
+
+    def test_none_input_returns_none(self) -> None:
+        assert _parse_posted_date(None) is None
+
+    def test_empty_string_returns_none(self) -> None:
+        assert _parse_posted_date("") is None
+
+    def test_unrecognised_format_returns_none(self) -> None:
+        assert _parse_posted_date("last quarter") is None
+
+
+# ---------------------------------------------------------------------------
+# normalize — Stepstone and LinkedIn dispatch
+# ---------------------------------------------------------------------------
+
+
+def _make_stepstone_raw(**overrides: object) -> dict:
+    """Return a minimal valid raw Stepstone dict (as produced by the extractor)."""
+    raw: dict = {
+        "job_id": "SS_99001",
+        "title_raw": "Data Scientist",
+        "company": "SS GmbH",
+        "location_raw": "Berlin",
+        "posted_date_raw": "2026-05-10T09:30:00",
+        "url": "https://www.stepstone.de/job/99001",
+        "source_keyword": "data-scientist",
+        "source_city": "berlin",
+    }
+    raw.update(overrides)
+    return raw
+
+
+def _make_linkedin_raw(**overrides: object) -> dict:
+    """Return a minimal valid raw LinkedIn dict (as produced by the extractor)."""
+    raw: dict = {
+        "source": "linkedin",
+        "job_id_raw": "LI_li001",
+        "title_raw": "Data Analyst",
+        "company_raw": "LI GmbH",
+        "city_raw": "Berlin",
+        "posted_at_raw": "30-05-2026",
+        "description_raw": "Seeking a data analyst with SQL skills.",
+        "url": "https://www.linkedin.com/jobs/view/li001",
+        "employment_type": "Full-time",
+        "applicant_count": 45,
+        "is_remote": False,
+    }
+    raw.update(overrides)
+    return raw
+
+
+class TestNormalizeStepstoneFields:
+    def test_job_id_preserved(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert result["job_id"] == "SS_99001"
+
+    def test_source_set(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert result["source"] == "stepstone"
+
+    def test_city_from_location_raw(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert result["city"] == "Berlin"
+
+    def test_posted_date_parsed_from_iso_datetime(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert result["posted_date"] == date(2026, 5, 10)
+
+    def test_all_canonical_fields_present(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert _CANONICAL_FIELDS == set(result.keys())
+
+    def test_company_mapped(self) -> None:
+        result = normalize(_make_stepstone_raw(), "stepstone")
+        assert result["company"] == "SS GmbH"
+
+
+class TestNormalizeLinkedInFields:
+    def test_job_id_from_job_id_raw(self) -> None:
+        result = normalize(_make_linkedin_raw(), "linkedin")
+        assert result["job_id"] == "LI_li001"
+
+    def test_source_set(self) -> None:
+        result = normalize(_make_linkedin_raw(), "linkedin")
+        assert result["source"] == "linkedin"
+
+    def test_city_from_city_raw(self) -> None:
+        result = normalize(_make_linkedin_raw(), "linkedin")
+        assert result["city"] == "Berlin"
+
+    def test_dd_mm_yyyy_posted_date_parsed(self) -> None:
+        result = normalize(_make_linkedin_raw(), "linkedin")
+        assert result["posted_date"] == date(2026, 5, 30)
+
+    def test_is_remote_false_maps_to_onsite(self) -> None:
+        result = normalize(_make_linkedin_raw(is_remote=False), "linkedin")
+        assert result["work_model"] == "ONSITE"
+
+    def test_is_remote_true_maps_to_unknown(self) -> None:
+        result = normalize(_make_linkedin_raw(is_remote=True), "linkedin")
+        assert result["work_model"] == "UNKNOWN"
+
+    def test_employment_type_full_time(self) -> None:
+        result = normalize(_make_linkedin_raw(employment_type="Full-time"), "linkedin")
+        assert result["employment_type"] == "FULL_TIME"
+
+    def test_all_canonical_fields_present(self) -> None:
+        result = normalize(_make_linkedin_raw(), "linkedin")
+        assert _CANONICAL_FIELDS == set(result.keys())

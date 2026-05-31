@@ -11,6 +11,37 @@ from langdetect import LangDetectException, detect
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_posted_date(raw: str | None) -> date | None:
+    """Parse a posted-date string in any supported format; None on failure.
+
+    Formats tried in order:
+    - YYYY-MM-DD or ISO 8601 with time (BA and Stepstone)
+    - DD-MM-YYYY (LinkedIn manual CSV)
+    - RFC 2822 (Indeed RSS, e.g. "Mon, 27 May 2026 10:00:00 GMT")
+
+    Logs a warning and returns None when none of the formats match.
+    """
+    if not raw:
+        return None
+    # ISO date or ISO 8601 with time: slice first 10 chars gives YYYY-MM-DD
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        pass
+    # DD-MM-YYYY (LinkedIn manual)
+    try:
+        return datetime.strptime(raw[:10], "%d-%m-%Y").date()
+    except ValueError:
+        pass
+    # RFC 2822 (Indeed RSS)
+    try:
+        return parsedate_to_datetime(raw).date()
+    except (TypeError, ValueError):
+        pass
+    logger.warning("Unrecognised posted_date format: %r", raw)
+    return None
+
 _WORK_MODEL_MAP: dict[str, str] = {
     "VOLLSTAENDIG_IM_HOMEOFFICE": "REMOTE",
     "NACH_VEREINBARUNG": "HYBRID",
@@ -76,10 +107,7 @@ def _normalize_ba(raw: dict[str, Any]) -> dict[str, Any]:
     referenznummer: str = raw.get("referenznummer") or ""
 
     posted_date_str = (raw.get("veroeffentlichungszeitraum") or {}).get("von")
-    try:
-        posted_date: date | None = date.fromisoformat(posted_date_str) if posted_date_str else None
-    except ValueError:
-        posted_date = None
+    posted_date: date | None = _parse_posted_date(posted_date_str)
 
     return {
         # Identity and provenance
@@ -141,16 +169,6 @@ def _scan_keywords(text: str, patterns: list[tuple[str, list[str]]]) -> str:
     return "UNKNOWN"
 
 
-def _parse_rfc2822_date(raw: str | None) -> date | None:
-    """Parse an RFC 2822 date string (feedparser format) to a date; None on failure."""
-    if not raw:
-        return None
-    try:
-        return parsedate_to_datetime(raw).date()
-    except (TypeError, ValueError):
-        return None
-
-
 def _normalize_indeed(raw: dict[str, Any]) -> dict[str, Any]:
     """Map a raw Indeed RSS dict to the canonical jobs_raw schema."""
     title_raw: str = raw.get("title_raw") or ""
@@ -179,12 +197,102 @@ def _normalize_indeed(raw: dict[str, Any]) -> dict[str, Any]:
         "postal_code": None,
         "lat": None,
         "lon": None,
-        "posted_date": _parse_rfc2822_date(raw.get("posted_at_raw")),
+        "posted_date": _parse_posted_date(raw.get("posted_at_raw")),
         "employment_type": _scan_keywords(description_raw, _EMPLOYMENT_KEYWORDS),
         "work_model": _scan_keywords(description_raw, _WORK_MODEL_KEYWORDS),
         "language": _detect_language(description_raw),
         "role_category": _assign_role_category(title_normalized),
         # Downstream fields — populated by later transformers
+        "skills": [],
+        "salary_min": None,
+        "salary_max": None,
+        "salary_currency": None,
+        "is_duplicate": False,
+        "canonical_id": None,
+    }
+
+
+def _normalize_stepstone(raw: dict[str, Any]) -> dict[str, Any]:
+    """Map a raw Stepstone search-list record to the canonical jobs_raw schema."""
+    title_raw: str = raw.get("title_raw") or ""
+    title_normalized = title_raw.lower().strip()
+    description_raw: str = raw.get("description_raw") or ""
+
+    return {
+        "job_id": raw["job_id"],
+        "source": "stepstone",
+        "source_keyword": raw.get("source_keyword"),
+        "source_city": raw.get("source_city"),
+        "snapshot_date": date.today(),
+        "fetched_at": datetime.now(tz=timezone.utc),
+        "url": raw.get("url"),
+        "title_raw": title_raw,
+        "description_raw": description_raw,
+        "salary_raw": None,
+        "title_normalized": title_normalized,
+        "company": raw.get("company"),
+        "city": raw.get("location_raw"),
+        "region": None,
+        "country": "DE",
+        "postal_code": None,
+        "lat": None,
+        "lon": None,
+        "posted_date": _parse_posted_date(raw.get("posted_date_raw")),
+        "employment_type": _scan_keywords(description_raw, _EMPLOYMENT_KEYWORDS),
+        "work_model": _scan_keywords(description_raw, _WORK_MODEL_KEYWORDS),
+        "language": _detect_language(description_raw),
+        "role_category": _assign_role_category(title_normalized),
+        "skills": [],
+        "salary_min": None,
+        "salary_max": None,
+        "salary_currency": None,
+        "is_duplicate": False,
+        "canonical_id": None,
+    }
+
+
+def _normalize_linkedin(raw: dict[str, Any]) -> dict[str, Any]:
+    """Map a raw LinkedIn CSV dict to the canonical jobs_raw schema."""
+    title_raw: str = raw.get("title_raw") or ""
+    title_normalized = title_raw.lower().strip()
+    description_raw: str = raw.get("description_raw") or ""
+
+    is_remote: bool | None = raw.get("is_remote")
+    if is_remote is True:
+        # LinkedIn badge doesn't distinguish remote vs hybrid; see decisions.md
+        work_model = "UNKNOWN"
+    elif is_remote is False:
+        work_model = "ONSITE"
+    else:
+        work_model = _scan_keywords(description_raw, _WORK_MODEL_KEYWORDS)
+
+    employment_hint = (raw.get("employment_type") or "") + " " + description_raw
+    employment_type = _scan_keywords(employment_hint, _EMPLOYMENT_KEYWORDS)
+
+    return {
+        "job_id": raw["job_id_raw"],
+        "source": "linkedin",
+        "source_keyword": None,
+        "source_city": raw.get("city_raw"),
+        "snapshot_date": date.today(),
+        "fetched_at": datetime.now(tz=timezone.utc),
+        "url": raw.get("url"),
+        "title_raw": title_raw,
+        "description_raw": description_raw,
+        "salary_raw": None,
+        "title_normalized": title_normalized,
+        "company": raw.get("company_raw"),
+        "city": raw.get("city_raw"),
+        "region": None,
+        "country": "DE",
+        "postal_code": None,
+        "lat": None,
+        "lon": None,
+        "posted_date": _parse_posted_date(raw.get("posted_at_raw")),
+        "employment_type": employment_type,
+        "work_model": work_model,
+        "language": _detect_language(description_raw),
+        "role_category": _assign_role_category(title_normalized),
         "skills": [],
         "salary_min": None,
         "salary_max": None,
@@ -203,4 +311,8 @@ def normalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
         return _normalize_ba(raw)
     if source == "indeed":
         return _normalize_indeed(raw)
+    if source == "stepstone":
+        return _normalize_stepstone(raw)
+    if source == "linkedin":
+        return _normalize_linkedin(raw)
     raise ValueError(f"Unknown source: {source!r}")

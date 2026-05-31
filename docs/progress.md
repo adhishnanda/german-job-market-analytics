@@ -62,16 +62,23 @@
 - [x] Collect first 20 LinkedIn listings manually
 - [x] Commit and push
 
-### Day 9
-- [ ] Build cross-source deduplicator
-- [ ] Test dedup logic with sample data from 2+ sources
-- [ ] Verify is_duplicate and canonical_id fields
-- [ ] Commit and push
+### Day 9 — 2026-05-31
+- [x] Validate linkedin_sample.csv: 20 rows, no missing job_id or title, all applicant_counts valid integers
+- [x] Add city_raw auto-fill to "Berlin" when field is empty or missing (LinkedIn extractor)
+- [x] Add _parse_relative_date: converts "N days/weeks/months/years ago" to approximate ISO date
+- [x] Log four LinkedIn data-quality decisions in docs/decisions.md
+- [x] Add _parse_posted_date to normalizer: handles YYYY-MM-DD, ISO 8601 with time, DD-MM-YYYY, RFC 2822
+- [x] Add _normalize_stepstone and _normalize_linkedin to normalizer; update dispatch
+- [x] Add 7 _parse_posted_date tests + Stepstone/LinkedIn normalizer tests (80 total in test_normalizer.py)
+- [x] Build tests/test_pipeline_integration.py: 4-source fixture → normalize → deduplicate → load, 12 assertions
+- [x] Commit and push
 
 ### Day 10
+- [ ] Cross-source dedup pass: run deduplicator over real BA + LinkedIn sample data
+- [ ] Verify is_duplicate and canonical_id fields are populated correctly
 - [ ] Full pipeline dry run: all 4 sources → normalize → deduplicate → load
 - [ ] Check data quality: null rates, duplicate rate, posting date range
-- [ ] Fix any issues
+- [ ] Fix any issues found
 - [ ] Commit and push
 
 ## Week 3 — Airflow and Dashboard

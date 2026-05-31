@@ -274,6 +274,38 @@ means only "not fully on-site". The normalizer maps this to
 `work_model = "UNKNOWN"` until LinkedIn exposes a structured work-model field
 that separates the two.
 
+### posted_at_raw date format: DD-MM-YYYY in manual CSV
+Dates copied from LinkedIn's UI appear as DD-MM-YYYY (e.g. "30-05-2026"), not
+ISO format. The extractor passes these through unchanged (they don't match the
+relative-date pattern). The normalizer must handle both DD-MM-YYYY and ISO
+(YYYY-MM-DD) strings for this field.
+
+## 2026-05-31 — Normalizer date unification (Day 9)
+
+### _parse_posted_date replaces per-source inline parsing
+All four sources use different date formats: BA/standard ISO (YYYY-MM-DD),
+Stepstone ISO 8601 with time (e.g. "2026-05-30T10:00:00"), LinkedIn manual
+DD-MM-YYYY, and Indeed RSS RFC 2822. Previously BA parsed inline and Indeed
+used a dedicated `_parse_rfc2822_date` helper; Stepstone and LinkedIn had no
+normalizer at all.
+`_parse_posted_date` tries the formats in order (ISO slice → DD-MM-YYYY strptime
+→ parsedate_to_datetime) and logs a warning returning None for anything
+unrecognised. Centralising the logic means adding a new date format requires
+touching one function, not four.
+
+### _normalize_stepstone maps location_raw → city; no description available
+The Stepstone extractor scrapes search-result cards only — no detail-page fetch.
+`description_raw` is therefore always `""` at normalisation time, which means
+`employment_type`, `work_model`, and `skills` default to "UNKNOWN" / []. The
+fields remain available to be populated if a description-fetch step is added
+later without changing the schema.
+
+### _normalize_linkedin: is_remote=True → work_model="UNKNOWN"
+Matches the decision logged in the Day 9 LinkedIn data-quality section below.
+The employment_type hint concatenates the raw CSV `employment_type` column with
+`description_raw` before keyword scanning, so CSV values like "Full-time" are
+matched by the same `\bfull[\-\s]?time\b` regex used for other sources.
+
 ### city_raw auto-filled to "Berlin" for LinkedIn manual collection
 The manual CSV collection workflow sometimes omits the city field. The
 extractor defaults empty or missing `city_raw` to `"Berlin"` because the

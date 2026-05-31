@@ -71,7 +71,7 @@
 - [x] Add _normalize_stepstone and _normalize_linkedin to normalizer; update dispatch
 - [x] Add 7 _parse_posted_date tests + Stepstone/LinkedIn normalizer tests (80 total in test_normalizer.py)
 - [x] Build tests/test_pipeline_integration.py: 4-source fixture → normalize → deduplicate → load, 12 assertions
-- [ ] Commit and push
+- [x] Commit and push
 
 ### Day 10 — 2026-05-31
 - [x] Build etl/pipeline_runner.py (4-stage runner: extract → normalize → dedup → load + summary report)
@@ -84,7 +84,7 @@
 - [x] Full pipeline dry run: BA=853, Indeed=0 (blocked), Stepstone=25, LinkedIn=20 → 898 records → 543 in DB
 - [x] Data quality run: Indeed blocked (flag), 63 old BA posts (expected), skill coverage 3.5% (structural)
 - [x] Log all Day 10 findings in docs/decisions.md
-- [ ] Commit and push
+- [x] Commit and push
 
 ## Week 3 — Airflow and Dashboard
 

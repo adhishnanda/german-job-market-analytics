@@ -291,11 +291,14 @@ matches for otherwise valid records.
 
 ### Indeed RSS feeds permanently blocked
 All five `de.indeed.com/rss` feeds return HTTP 403 or 404 as of 2026-05-31.
-Indeed appears to have shut down or geo-blocked public RSS access.
-Decision: leave the extractor in place but treat Indeed as an inactive source for
-now. Source distribution check in `data_quality.py` will flag it until a replacement
-feed (e.g. official Job-Posting schema scrape or a partner API) is added.
-No pipeline changes required — the extractor returns [] gracefully.
+Indeed has shut down or geo-blocked public RSS access for this endpoint.
+The extractor returns `[]` gracefully and the data-quality source-distribution
+check flags Indeed as missing on every run — that flag is expected until a
+replacement is in place.
+Plan: Week 3 will evaluate an HTML scraping fallback for Indeed search results
+using the same approach as Stepstone. If the HTML route is also blocked or
+legally ambiguous, Indeed will be dropped from the active source list entirely.
+No pipeline code changes required in the interim.
 
 ### Stepstone HTML breaking change: job ID and date fields
 Stepstone's search-results HTML changed between Day 7 and Day 10:
@@ -314,17 +317,26 @@ are still technically "open" in the system. Of 498 canonical BA records loaded:
 - 2 records from 2022–2023 (genuinely old, still in BA's index)
 - 31 records from 2025 (>90 days, still active)
 - 465 records from 2026 (current)
-The data quality 90-day date-range check correctly flags this. It is not a
-pipeline bug — the BA API does not filter by recency and exposes the full active
-index. The check serves as a data awareness signal, not an error to fix.
+This is expected behaviour — the BA API exposes its full active index without a
+recency filter. The date range FAIL from data_quality.py is not a data error.
+Decision: raise the date-range threshold in `data_quality.py` from 90 days to
+180 days for the BA source only. This still catches genuinely stale or misdated
+records (2022–2023 outliers stay flagged) while not raising a false alarm for
+the large proportion of legitimately older-but-active BA listings.
 
-### Skill coverage low (3.5%) — expected, not a bug
-Only 19 of 541 canonical records have at least one skill detected. The low rate
-is structural: BA search-list records include only title + metadata (no description);
-Stepstone search cards also have no description. Skills can only be extracted
-from LinkedIn descriptions (20 records) and any future Indeed/detail-page data.
-The 50% coverage threshold will be achievable once detail-page fetching is added
-for BA and Stepstone (Day 10 backlog item). For now, the flag is expected.
+### Skill coverage low (3.5%) — structural, not a bug
+Only 19 of 541 canonical records have at least one skill detected. The root
+cause is structural: BA search-list records include only title and metadata
+(no description text); Stepstone search cards also return no description.
+`skill_extractor` can only find skills in `description_raw`, so coverage is
+bounded by the fraction of records that have a non-empty description.
+Two paths to improvement:
+1. Fetch individual job detail pages for BA and Stepstone (future iteration).
+   This would make description available for ~95% of records.
+2. Rely on LinkedIn and Indeed (when unblocked) as the primary skill-signal
+   sources until detail-page fetching is implemented.
+The 50% coverage threshold in `data_quality.py` remains as-is; the flag is
+expected on every run until detail-page fetching lands.
 
 ### Loader dedup fix: drop_duplicates by job_id before INSERT
 The BA API returns the same `referenznummer` (and therefore same `BA_{id}`) for
@@ -338,6 +350,17 @@ staging DataFrame. This ensures each `job_id` is inserted exactly once,
 preserving the canonical version's `is_duplicate=False` value.
 Cross-source duplicates (e.g. `LI_456` pointing to `BA_123`) have distinct
 `job_id` values and are unaffected — both records are stored.
+
+### LinkedIn CSV encoding: cp1252 fallback
+The manually collected `linkedin_sample.csv` was saved on Windows with
+cp1252 encoding (Windows-1252), not UTF-8. Byte `0xF6` (ö) caused a
+`UnicodeDecodeError` when `_read_csv` opened the file with `encoding="utf-8"`.
+Fix: `_read_csv` now tries `utf-8-sig` first (handles UTF-8 with BOM), then
+falls back to `cp1252`. If both fail a `ValueError` is raised with the file
+path so the caller knows which CSV needs re-encoding.
+Documented for reproducibility: any future manual CSVs exported from Excel or
+a Windows browser should be checked with `file -i` or saved explicitly as
+UTF-8 to avoid silent field-corruption on non-Windows hosts.
 
 ## 2026-05-31 — Normalizer date unification (Day 9)
 

@@ -474,3 +474,71 @@ Fix: all date literals in tests use `pd.Timestamp("YYYY-MM-DD")`.
 Fixture dates were chosen to land on ISO Mondays (2026-05-04, 2026-05-11) so
 `DATE_TRUNC('week', posted_date)` returns the same date unchanged, making
 expected values trivial to compute without a calendar lookup.
+
+## 2026-05-31 — Dashboard (Days 13–14)
+
+### Altair dropped; Plotly graph_objects only
+The initial dependency list included both Altair and Plotly. Dashboard
+implementation chose `plotly.graph_objects` exclusively. `go` provides
+full control over trace-level styling (line width per trace, marker properties,
+hover templates) that Altair's declarative grammar makes harder to express
+without custom Vega specs. Altair remains in `requirements.txt` but is not
+imported; it can be removed in a cleanup pass.
+
+### Single persistent DuckDB connection via @st.cache_resource
+`_open_db()` is decorated with `@st.cache_resource`, which creates one
+connection for the Streamlit server process lifetime. This avoids opening and
+closing a file-backed DuckDB connection on every page interaction. The
+connection is opened `read_only=True` to prevent accidental writes during a
+dashboard session. If the file is absent the function returns `None` and the
+UI surfaces a warning with setup instructions.
+
+### Python-level filtering, not parameterized SQL
+Sidebar selections (date range, city, role) are applied in Python (pandas mask
+/ `isin`) on DataFrames returned by the aggregation functions, rather than
+passing filter values back into SQL. The aggregation DataFrames are small
+(hundreds of rows at most) so Python filtering costs microseconds.
+Parameterized SQL would require duplicating the aggregation query or adding
+optional WHERE clauses to every function in `analytics/aggregations.py`.
+The current separation keeps aggregation logic and filter logic independently
+testable and keeps the aggregation function signatures stable.
+
+### role_donut_chart reuses role_by_city DataFrame
+The donut chart collapses the city dimension of `role_by_city` data with a
+`groupby("role_category").sum()`. This avoids a separate SQL query and a fifth
+aggregation function. Both charts render from the same `rbc_df` variable, so
+sidebar city and role filters apply consistently across both views.
+
+### Salary distribution chart deferred
+The `salary_dist` aggregation was built on Day 12. A `salary_dist_chart` was
+not added to the dashboard in this phase because only ~5–10% of canonical
+records carry a salary value, which makes a histogram or box plot misleading at
+current data volumes. The aggregation function and its tests remain in place;
+the chart will be added once detail-page fetching (a future iteration) produces
+sufficient salary coverage across sources.
+
+### IBM Plex Mono for labels, IBM Plex Sans for body text
+A monospace font (IBM Plex Mono) on axis tick labels, legend entries, metric
+values, and hover labels gives the dashboard a data-terminal aesthetic consistent
+with the dark editorial colour palette. IBM Plex Sans is used for chart titles
+and page-level body copy where proportional spacing improves readability at
+larger sizes. Both fonts are loaded via a Google Fonts `@import` inside the CSS
+`<style>` block injected with `st.markdown(unsafe_allow_html=True)`.
+Trade-off: requires an outbound Google Fonts request on load. Acceptable for a
+local analytics tool; self-hosting the WOFF2 files would be required for an
+air-gapped or fully offline deployment.
+
+### Gridlines on value axis only for bar charts
+Category-axis gridlines on bar charts create visual noise behind the bars
+without adding information (the bars themselves mark category positions).
+Gridlines are retained only on the value axis — x-axis for horizontal bars
+(`role_by_city`), y-axis for vertical bars (`source_coverage`, `language_ratio`)
+— via explicit `showgrid=False` on the category axis after `_apply_theme` sets
+both axes to the shared grid style.
+
+### hovermode="x unified" on skill trend chart only
+Unified hover groups all skill traces at the same x-position into one tooltip,
+making it easy to compare multiple skills for a given week. For bar charts a
+unified hover would aggregate across stacked segments rather than isolating
+individual segments, which defeats the per-segment breakdown. Default
+closest-point hover is retained for all bar and donut charts.

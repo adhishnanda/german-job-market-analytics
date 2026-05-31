@@ -101,18 +101,26 @@
 - [x] Fix pre-existing ruff F401/F541 warnings across 4 existing files (ruff --fix)
 - [x] Commit and push
 
-### Day 13
-- [ ] Build dashboard/app.py — Streamlit skeleton + DuckDB connection
-- [ ] Add skill demand over time chart
-- [ ] Add role count by city chart
-- [ ] Commit and push
+### Day 13 — 2026-05-31
+- [x] Build dashboard/app.py — Streamlit skeleton, `@st.cache_resource` DuckDB read-only connection
+- [x] Build dashboard/charts.py — `_apply_theme` shared helper, `skill_trend_chart`, `role_by_city_chart`, `role_donut_chart`
+- [x] Add KPI row — canonical jobs, active sources, cities, role categories via `st.metric`
+- [x] Add sidebar filters — posted date range, city multiselect, role category multiselect
+- [x] Add `_filter_by_date`, `_filter_city`, `_filter_role` Python-level filter helpers
+- [x] Wire all four aggregation functions from analytics/aggregations.py into dashboard
+- [x] Inject dark editorial CSS — metric cards, chart container flush, spacing, sidebar divider
+- [x] Commit and push
 
-### Day 14
-- [ ] Add salary distribution by role chart
-- [ ] Add source coverage comparison chart
-- [ ] Add English vs German ratio chart
-- [ ] Add sidebar filters (date, city, role category)
-- [ ] Commit and push
+### Day 14 — 2026-05-31
+- [x] Add `source_coverage_chart` and `language_ratio_chart` to charts.py
+- [x] Salary distribution chart deferred — ~5–10% salary coverage too sparse for a meaningful chart at current data volumes; `salary_dist` aggregation ready when detail-page fetching lands
+- [x] Load IBM Plex Mono + IBM Plex Sans via Google Fonts `@import` in CSS block
+- [x] Apply IBM Plex Mono to axis labels, legend, metrics, hover; IBM Plex Sans to titles and body
+- [x] Add `#00d4ff` 1px left-border accent to page title
+- [x] Add uppercase letter-spaced section labels before each chart row (SKILL DEMAND TREND, ROLE BREAKDOWN, COVERAGE & LANGUAGE)
+- [x] Polish: chart heights +20%, value-axis-only gridlines on bar charts, `hovermode="x unified"` on trend chart, `marker_line_width=0`, `y=0` reference line on bar charts, accent trace `line.width=3`
+- [x] Confirm clean `streamlit run dashboard/app.py` start
+- [x] Commit and push
 
 ## Week 4 — Polish and Deploy
 

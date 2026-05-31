@@ -280,6 +280,13 @@ ISO format. The extractor passes these through unchanged (they don't match the
 relative-date pattern). The normalizer must handle both DD-MM-YYYY and ISO
 (YYYY-MM-DD) strings for this field.
 
+### city_raw auto-filled to "Berlin" for LinkedIn manual collection
+The manual CSV collection workflow sometimes omits the city field. The
+extractor defaults empty or missing `city_raw` to `"Berlin"` because the
+collection is scoped to Berlin-area roles. This prevents `NULL` city values
+that would cause the deduplicator's city guard to silently drop cross-source
+matches for otherwise valid records.
+
 ## 2026-05-31 — Normalizer date unification (Day 9)
 
 ### _parse_posted_date replaces per-source inline parsing
@@ -301,14 +308,7 @@ fields remain available to be populated if a description-fetch step is added
 later without changing the schema.
 
 ### _normalize_linkedin: is_remote=True → work_model="UNKNOWN"
-Matches the decision logged in the Day 9 LinkedIn data-quality section below.
+Matches the decision logged in the LinkedIn extractor data-quality section above.
 The employment_type hint concatenates the raw CSV `employment_type` column with
 `description_raw` before keyword scanning, so CSV values like "Full-time" are
 matched by the same `\bfull[\-\s]?time\b` regex used for other sources.
-
-### city_raw auto-filled to "Berlin" for LinkedIn manual collection
-The manual CSV collection workflow sometimes omits the city field. The
-extractor defaults empty or missing `city_raw` to `"Berlin"` because the
-collection is scoped to Berlin-area roles. This prevents `NULL` city values
-that would cause the deduplicator's city guard to silently drop cross-source
-matches for otherwise valid records.

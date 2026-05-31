@@ -25,7 +25,7 @@ SQL query rather than four manual searches.
 | Bundesagentur für Arbeit | REST API v6 (official public endpoint) | `BA_` | 2 s |
 | Indeed Germany | RSS feeds via feedparser | `IN_` | 3 s |
 | Stepstone | HTML scraping (requests + BeautifulSoup4) | `SS_` | 10–18 s random |
-| LinkedIn | Manual CSV export *(coming Day 8)* | `LI_` | n/a |
+| LinkedIn | Manual CSV export | `LI_` | n/a |
 
 Keywords tracked: `Data Engineer`, `Data Analyst`, `Data Scientist`,
 `Analytics Engineer`, `BI Engineer`, `Machine Learning Engineer`
@@ -106,7 +106,7 @@ etl/
     bundesagentur.py   # BA API v6 — paginated fetch, dated JSON snapshot
     indeed.py          # RSS feed parser — dated CSV snapshot
     stepstone.py       # HTML scraper — slug conversion, 403/429 guard
-    linkedin.py        # CSV reader stub (coming Day 8)
+    linkedin.py        # manual CSV reader — relative date parsing, city auto-fill
   transformers/
     normalizer.py      # canonical schema mapping, language detection, role taxonomy
     skill_extractor.py # ~70-skill regex dictionary, alias collapsing
@@ -132,6 +132,7 @@ tests/
                       test_salary_parser.py  test_deduplicator.py
   loaders/            test_duckdb_loader.py
   test_pipeline_e2e.py
+  test_pipeline_integration.py   # 4-source fixture: normalize → dedup → load
 
 docs/
   architecture.md     schema.md     decisions.md     progress.md
@@ -167,12 +168,13 @@ pip install -r requirements.txt
 mkdir -p data/raw data/processed data/db
 ```
 
-**Run the pipeline manually (BA + Indeed + Stepstone):**
+**Run the pipeline manually:**
 
 ```bash
 python -m etl.extractors.bundesagentur
 python -m etl.extractors.indeed
 python -m etl.extractors.stepstone
+# LinkedIn: place CSV files in data/raw/linkedin/YYYY-MM-DD/ before running the loader
 python -m etl.loaders.duckdb_loader
 ```
 
@@ -209,7 +211,12 @@ credentials or network access required.
 
 ## Current status
 
-**Days 1–7 complete — 229 tests passing, 3 skipped.**
+**Week 2 complete — all 4 sources implemented and tested — 312 tests passing, 3 skipped.**
+
+All extractors, transformers, and the loader are fully implemented. Cross-source
+deduplication has been confirmed working end-to-end with all four sources through
+`tests/test_pipeline_integration.py`. The pipeline is ready for Airflow
+orchestration in Week 3.
 
 | Day | Module | Status |
 |---|---|---|
@@ -220,6 +227,8 @@ credentials or network access required.
 | 5 | DuckDB loader + views + end-to-end test | Done |
 | 6 | Indeed RSS extractor + DuckDB 1.1.3 upsert fix | Done |
 | 7 | Stepstone HTML scraper + tests | Done |
+| 8 | LinkedIn manual CSV reader + tests | Done |
+| 9 | Normalizer extended to all 4 sources; cross-source integration test | Done |
 
 ---
 
@@ -227,9 +236,7 @@ credentials or network access required.
 
 | Day | Plan |
 |---|---|
-| 8 | LinkedIn CSV reader (`etl/extractors/linkedin.py`) |
-| 9 | Cross-source deduplication validation |
-| 10 | Full pipeline dry run — all 4 sources |
+| 10 | Full pipeline dry run — real data from all 4 sources, data quality check |
 | 11–12 | Apache Airflow DAG, daily schedule |
 | 13–14 | Streamlit dashboard — skill trends, salary dist, role counts |
 | 15 | Deploy to Streamlit Cloud |

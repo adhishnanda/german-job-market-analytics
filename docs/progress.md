@@ -71,7 +71,7 @@
 - [x] Add _normalize_stepstone and _normalize_linkedin to normalizer; update dispatch
 - [x] Add 7 _parse_posted_date tests + Stepstone/LinkedIn normalizer tests (80 total in test_normalizer.py)
 - [x] Build tests/test_pipeline_integration.py: 4-source fixture → normalize → deduplicate → load, 12 assertions
-- [x] Commit and push
+- [ ] Commit and push
 
 ### Day 10
 - [ ] Cross-source dedup pass: run deduplicator over real BA + LinkedIn sample data

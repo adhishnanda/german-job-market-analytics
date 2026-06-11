@@ -542,3 +542,70 @@ making it easy to compare multiple skills for a given week. For bar charts a
 unified hover would aggregate across stacked segments rather than isolating
 individual segments, which defeats the per-segment breakdown. Default
 closest-point hover is retained for all bar and donut charts.
+
+## 2026-06-11 — Streamlit Cloud deployment prep (Day 15)
+
+### jobs.duckdb committed directly to the repo
+`data/db/jobs.duckdb` (2.26 MB) is committed to the repository so that Streamlit
+Cloud can access the pre-populated database at runtime without requiring a pipeline
+run in the cloud environment. Streamlit Cloud provides no persistent writable
+storage and no mechanism to run Airflow or the ETL pipeline; bundling the snapshot
+database is the only practical way to have data available on first deploy.
+The `.gitignore` entries `data/db/` and `*.duckdb` were both removed to allow the
+file to be tracked. The `data/raw/` and `data/processed/` lines are retained — those
+directories hold large raw snapshots that have no place in the repo.
+Trade-off: the database will be frozen at the commit snapshot until the file is
+manually re-committed after a fresh pipeline run. Acceptable for a portfolio
+deployment where the goal is to show the dashboard working, not to demonstrate
+live data freshness.
+Size limit: GitHub hard-limits files to 100 MB; the current 2.26 MB is well within
+bounds. If the database grows significantly (e.g. after many pipeline runs), a
+git-lfs migration may be needed.
+
+### requirements.txt slimmed to 4 dashboard-only packages
+The root `requirements.txt` was reduced to the four packages the dashboard actually
+imports: `duckdb==1.1.3`, `streamlit==1.36.0`, `plotly==5.22.0`, `pandas==2.2.2`.
+Reason: Streamlit Cloud installs from the root `requirements.txt`. Including
+`apache-airflow==3.2.2` caused the build to fail — Airflow pulls in `cachetools`
+at a version that conflicts with other Streamlit Cloud pre-installed packages, and
+the install itself is extremely slow (200+ transitive dependencies).
+ETL and dev dependencies (airflow, requests, beautifulsoup4, feedparser, lxml,
+langdetect, thefuzz, pytest, black, ruff) are not needed to run the dashboard and
+are excluded. Local development still uses the full `.venv` which was created from
+the previous pinned versions; those pins remain accurate in the existing environment.
+
+## 2026-06-11 — README rewrite (Day 16)
+
+### README restructured for completed-project state
+The README was rewritten to remove all progress-tracking language (week numbers,
+"Day N", roadmap table, "planned" annotations). That material belongs in
+`docs/progress.md`; keeping it in the README makes the project appear unfinished to
+a reader arriving cold from GitHub or the live dashboard link.
+
+Key structural changes:
+- Live dashboard URL promoted to the top of the file.
+- Screenshots section added as a placeholder; to be filled once the deployment is
+  stable and representative.
+- Known limitations extracted into a dedicated top-level section rather than being
+  buried inside the methodology disclosure. The four limitations called out
+  explicitly are: low skill coverage (~3.5%), sparse salary data, LinkedIn manual
+  collection cadence, and the DuckDB snapshot being frozen between pipeline runs.
+  These are the items most likely to confuse or mislead a reader interpreting the
+  dashboard numbers.
+- Project structure updated to reflect `analytics/aggregations.py` and the
+  completed Airflow DAG (previously annotated "planned — Week 3").
+- `requirements.txt` in the local setup section left as-is; it now contains only
+  the 4 dashboard deps, which is correct for a reader running just the dashboard.
+  Readers who want to run the full ETL pipeline will need to install the additional
+  dev dependencies separately — this is noted implicitly by the slim file but not
+  yet documented in a separate dev-setup section. A dev-requirements file is a
+  candidate for a future cleanup pass.
+
+### Altair not removed from dev environment despite being unused
+`altair` is present in the full dev `.venv` but not imported anywhere in the
+current codebase. It was kept in the environment rather than actively purged
+because: (1) Streamlit Cloud does not install it (it is not in the slimmed
+`requirements.txt`), so there is no deployment cost; (2) removing it from a live
+`.venv` requires `pip uninstall` which is out of scope for a documentation day.
+A future cleanup pass should remove it from any dev requirements file if one is
+created.

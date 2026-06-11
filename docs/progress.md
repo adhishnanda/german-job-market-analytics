@@ -124,16 +124,17 @@
 
 ## Week 4 — Polish and Deploy
 
-### Day 15
-- [ ] Deploy Streamlit app to Streamlit Cloud
-- [ ] Test live deployment
-- [ ] Add live demo link to README.md
-- [ ] Commit and push
+### Day 15 — 2026-06-11
+- [x] Slim requirements.txt to 4 dashboard-only runtime packages (duckdb==1.1.3, streamlit==1.36.0, plotly==5.22.0, pandas==2.2.2)
+- [x] Create .streamlit/config.toml with dark editorial theme (base=dark, #111111/#1a1a1a/#e8e8e8/#00d4ff)
+- [x] Remove data/db/ and *.duckdb from .gitignore; stage jobs.duckdb (2.26 MB) for Streamlit Cloud access
+- [x] Fix ruff E402 warnings in dashboard/app.py (# noqa: E402 on post-sys.path imports)
+- [x] black . && ruff check . — all checks passed
 
-### Day 16
-- [ ] Write full README.md with screenshots and methodology
-- [ ] Add architecture diagram to docs/architecture.md
-- [ ] Add data quality notes and coverage gaps disclosure
+### Day 16 — 2026-06-11
+- [x] Write full README.md with screenshots and methodology
+- [x] Add architecture diagram to docs/architecture.md
+- [x] Add data quality notes and coverage gaps disclosure
 - [ ] Commit and push
 
 ### Day 17

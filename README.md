@@ -1,43 +1,29 @@
 # German Job Market Analytics
 
 A multi-source ETL pipeline that collects data engineering and analytics job
-postings from four German job boards, normalises them into a common schema,
+postings from German job boards, normalises them into a common schema,
 deduplicates across sources, and surfaces skill-demand trends through a
 Streamlit dashboard.
 
+**Live dashboard:** https://german-job-market-analytics.streamlit.app
+
 ---
 
-## Why this exists
+## What this does and why
 
-Publicly available data on which tools German employers actually require is
-scattered across four major job boards with different formats, languages, and
-update cadences. This project pulls all four into a single DuckDB store so
+Publicly available data on which tools German employers require is scattered
+across several job boards with different formats, languages, and update
+cadences. This project pulls three active sources into a single DuckDB store so
 that questions like "Is Spark demand falling relative to dbt?" or "Do Berlin
-roles pay more than Munich for the same title?" can be answered with a single
-SQL query rather than four manual searches.
+roles pay more than Munich for the same title?" can be answered from one place
+rather than four manual searches.
 
 ---
 
-## Data sources
+## Screenshots
 
-| Source | Method | ID prefix | Request gap |
-|---|---|---|---|
-| Bundesagentur für Arbeit | REST API v6 (official public endpoint) | `BA_` | 2 s |
-| Indeed Germany | RSS feeds via feedparser — **blocked (HTTP 403); no live data collected** | `IN_` | 3 s |
-| Stepstone | HTML scraping (requests + BeautifulSoup4) | `SS_` | 10–18 s random |
-| LinkedIn | Manual CSV export | `LI_` | n/a |
-
-> **Indeed status:** All five `de.indeed.com/rss` endpoints return HTTP 403 on
-> every live run. The extractor code and fixture-based tests are retained in the
-> repo but Indeed is not an active data source. The pipeline runs on
-> Bundesagentur, Stepstone, and LinkedIn. See `docs/decisions.md` for the full
-> rationale.
-
-Keywords tracked: `Data Engineer`, `Data Analyst`, `Data Scientist`,
-`Analytics Engineer`, `BI Engineer`, `Machine Learning Engineer`
-
-Current geographic scope: Berlin (Stepstone and LinkedIn), all major German
-cities via BA.
+<!-- Add screenshots here once the live dashboard is running -->
+<!-- Suggested: skill frequency bar chart, role distribution pie, salary box plot -->
 
 ---
 
@@ -45,27 +31,26 @@ cities via BA.
 
 ```
 Bundesagentur API ──┐
-Stepstone HTML      ├──► Extract ──► Normalize ──► Deduplicate ──► Load (DuckDB) ──► Aggregate ──► Dashboard
+Stepstone HTML      ├──► Extract ──► Normalise ──► Deduplicate ──► Load (DuckDB) ──► Aggregate ──► Dashboard
 LinkedIn CSV ───────┘ (manual)
 
 Indeed RSS          ✗  blocked (HTTP 403) — extractor retained, no live data
 ```
 
-**Extract** — each source has its own extractor in `etl/extractors/`. Every
-run saves an immutable dated snapshot under `data/raw/{source}/YYYY-MM-DD/`
-before any transformation. Extractors return `[]` on failure; they never
-raise.
+**Extract** — each source has its own extractor in `etl/extractors/`. Every run
+saves an immutable dated snapshot under `data/raw/{source}/YYYY-MM-DD/` before
+any transformation. Extractors return `[]` on failure; they never raise.
 
-**Normalize** — `etl/transformers/normalizer.py` maps source-specific field
-names to the canonical 29-column schema (see `docs/schema.md`). It detects
-description language via `langdetect`, assigns a role category from a
-keyword taxonomy, and sets `employment_type` / `work_model` via regex scans.
+**Normalise** — `etl/transformers/normalizer.py` maps source-specific field
+names to a canonical 29-column schema (see `docs/schema.md`). It detects
+description language via `langdetect`, assigns a role category from a keyword
+taxonomy, and sets `employment_type` / `work_model` via regex scans.
 
 **Enrich** — two transformer modules run after normalisation:
 - `salary_parser.py` — extracts salary ranges from free text in German and
   English formats; converts monthly figures to annual.
-- `skill_extractor.py` — regex word-boundary scan against ~70 canonical
-  tech skills; aliases (e.g. `GCP` → `Google Cloud Platform`) collapse to a
+- `skill_extractor.py` — regex word-boundary scan against ~70 canonical tech
+  skills; aliases (e.g. `GCP` → `Google Cloud Platform`) collapse to a
   canonical name stored in a `VARCHAR[]` array.
 
 **Deduplicate** — `deduplicator.py` runs two passes:
@@ -78,10 +63,31 @@ keyword taxonomy, and sets `employment_type` / `work_model` via regex scans.
 **Load** — `duckdb_loader.py` upserts into `jobs_raw` via DELETE + INSERT
 (required for `VARCHAR[]` columns in DuckDB 1.1.3). Two derived views are
 maintained automatically: `jobs_clean` (non-duplicate records) and
-`skills_exploded` (one row per skill per job, duplicates excluded).
+`skills_exploded` (one row per skill per job).
 
-**Aggregate + Dashboard** — SQL aggregations and a Streamlit app *(in
-progress, Week 3)*.
+**Aggregate + Dashboard** — `analytics/aggregations.py` provides five SQL query
+functions consumed by the Streamlit app in `dashboard/app.py`.
+
+---
+
+## Data sources
+
+| Source | Method | ID prefix | Request gap |
+|---|---|---|---|
+| Bundesagentur für Arbeit | REST API v6 (official public endpoint) | `BA_` | 2 s |
+| Stepstone | HTML scraping (requests + BeautifulSoup4) | `SS_` | 10–18 s random |
+| LinkedIn | Manual CSV export | `LI_` | n/a |
+| Indeed Germany | RSS feed — **blocked (HTTP 403); no live data** | `IN_` | 3 s |
+
+> **Indeed status:** All `de.indeed.com/rss` endpoints return HTTP 403 on every
+> live run. The extractor code and fixture-based tests are retained but Indeed
+> is not an active data source. See `docs/decisions.md` for the full rationale.
+
+Keywords tracked: `Data Engineer`, `Data Analyst`, `Data Scientist`,
+`Analytics Engineer`, `BI Engineer`, `Machine Learning Engineer`
+
+Geographic scope: Berlin (Stepstone and LinkedIn), all major German cities via
+Bundesagentur.
 
 ---
 
@@ -111,7 +117,7 @@ progress, Week 3)*.
 etl/
   extractors/
     bundesagentur.py   # BA API v6 — paginated fetch, dated JSON snapshot
-    indeed.py          # RSS feed parser — dated CSV snapshot
+    indeed.py          # RSS feed parser — dated CSV snapshot (blocked)
     stepstone.py       # HTML scraper — slug conversion, 403/429 guard
     linkedin.py        # manual CSV reader — relative date parsing, city auto-fill
   transformers/
@@ -122,24 +128,24 @@ etl/
   loaders/
     duckdb_loader.py   # DELETE + INSERT upsert, jobs_raw table, views
 
-airflow/dags/
-  job_market_pipeline.py  (planned — Week 3)
-
 analytics/
-  aggregations.py     (planned — Week 3)
+  aggregations.py      # five SQL aggregation functions for the dashboard
+
+airflow/dags/
+  job_market_pipeline.py  # daily DAG — extract, normalise, deduplicate, load
 
 dashboard/
-  app.py              (planned — Week 3)
-  charts.py           (planned — Week 3)
+  app.py               # Streamlit app — four chart pages, sidebar filters
+  charts.py            # Plotly / Altair chart builders
 
 tests/
-  extractors/         test_bundesagentur.py  test_indeed.py
-                      test_stepstone.py      test_linkedin.py
-  transformers/       test_normalizer.py     test_skill_extractor.py
-                      test_salary_parser.py  test_deduplicator.py
-  loaders/            test_duckdb_loader.py
+  extractors/          test_bundesagentur.py  test_indeed.py
+                       test_stepstone.py      test_linkedin.py
+  transformers/        test_normalizer.py     test_skill_extractor.py
+                       test_salary_parser.py  test_deduplicator.py
+  loaders/             test_duckdb_loader.py
   test_pipeline_e2e.py
-  test_pipeline_integration.py   # 4-source fixture: normalize → dedup → load
+  test_pipeline_integration.py   # 4-source fixture: normalise → dedup → load
 
 docs/
   architecture.md     schema.md     decisions.md     progress.md
@@ -180,7 +186,7 @@ mkdir -p data/raw data/processed data/db
 ```bash
 python -m etl.extractors.bundesagentur
 python -m etl.extractors.stepstone
-# LinkedIn: place CSV files in data/raw/linkedin/YYYY-MM-DD/ before running the loader
+# LinkedIn: place your CSV export in data/raw/linkedin/YYYY-MM-DD/ first
 # Indeed: extractor present but returns [] — RSS endpoint blocked (HTTP 403)
 python -m etl.loaders.duckdb_loader
 ```
@@ -191,13 +197,13 @@ python -m etl.loaders.duckdb_loader
 black . && ruff check .
 ```
 
-**Start Airflow** *(once the DAG is built in Week 3)*:
+**Start Airflow:**
 
 ```bash
 airflow standalone
 ```
 
-**Launch the dashboard** *(once built in Week 3)*:
+**Run the dashboard:**
 
 ```bash
 streamlit run dashboard/app.py
@@ -211,74 +217,53 @@ streamlit run dashboard/app.py
 pytest tests/ -v
 ```
 
-The suite runs entirely offline — all HTTP calls are mocked. No live
-credentials or network access required.
+The suite runs entirely offline — all HTTP calls are mocked. No live credentials
+or network access required. 312 tests pass, 3 skipped.
 
 ---
 
-## Current status
+## Known limitations
 
-**Week 2 complete — all 4 sources implemented and tested — 312 tests passing, 3 skipped.**
+**Skill coverage is low (~3.5%).** The skill dictionary contains ~70 entries
+matched by regex. Many job descriptions use vendor-specific terminology,
+abbreviations, or phrasing variants that the dictionary does not cover. Coverage
+improves as the dictionary grows.
 
-All extractors, transformers, and the loader are fully implemented. Cross-source
-deduplication has been confirmed working end-to-end with all four sources through
-`tests/test_pipeline_integration.py`. The pipeline is ready for Airflow
-orchestration in Week 3.
+**Salary data is sparse.** The majority of German job postings do not state
+salary ranges. Parsed figures come from the subset that do, so salary
+distributions reflect a self-selected minority of listings and should not be
+treated as market-wide estimates.
 
-| Day | Module | Status |
-|---|---|---|
-| 1 | Project scaffold, `.gitignore`, `requirements.txt` | Done |
-| 2 | Bundesagentur extractor + tests | Done |
-| 3 | Normalizer + skill extractor + tests | Done |
-| 4 | Salary parser + deduplicator + tests | Done |
-| 5 | DuckDB loader + views + end-to-end test | Done |
-| 6 | Indeed RSS extractor + DuckDB 1.1.3 upsert fix | Done |
-| 7 | Stepstone HTML scraper + tests | Done |
-| 8 | LinkedIn manual CSV reader + tests | Done |
-| 9 | Normalizer extended to all 4 sources; cross-source integration test | Done |
+**LinkedIn data is manually collected.** LinkedIn does not offer a public API or
+RSS feed. Data comes from LinkedIn's own CSV export tool, which means the
+LinkedIn slice of the dataset is only as fresh as the last manual export.
 
----
+**The DuckDB snapshot is frozen until the pipeline re-runs.** The Streamlit
+Cloud deployment uses a committed `jobs.duckdb` snapshot. It does not update
+automatically. To refresh, run the pipeline locally, commit the new snapshot,
+and redeploy.
 
-## Roadmap
+**Geographic scope is limited.** Stepstone and LinkedIn data covers Berlin only.
+Bundesagentur covers the major German cities queried by the keyword list.
 
-| Day | Plan |
-|---|---|
-| 10 | Full pipeline dry run — real data from all 4 sources, data quality check |
-| 11–12 | Apache Airflow DAG, daily schedule |
-| 13–14 | Streamlit dashboard — skill trends, salary dist, role counts |
-| 15 | Deploy to Streamlit Cloud |
-| 16 | Full README with screenshots, architecture diagram |
-| 17–18 | Final cleanup, `v1.0.0` tag |
+**Sampling, not census.** The pipeline queries a fixed set of six job-title
+keywords. It captures a representative but incomplete slice of the market.
 
 ---
 
-## Data methodology and disclosure
-
-This is a **research and portfolio project**. A few things worth knowing:
-
-**Sampling, not census.** The pipeline queries a fixed set of 6 job-title
-keywords across 8 German cities for Bundesagentur and Indeed, and 5
-hyphenated keyword slugs in Berlin only for Stepstone. It captures a
-representative but incomplete slice of the market.
+## Data methodology
 
 **Rate limiting is built in.** Every extractor enforces minimum gaps between
-requests (2 s for BA, 3 s for Indeed, 10–18 s random for Stepstone) and
-stops immediately on 403 or 429 responses. The pipeline is deliberately
-sequential — no parallelism.
-
-**Source characteristics differ.** The Bundesagentur endpoint is an official
-public API used by their own job-search SPA, accessed with the same API key
-the app itself uses. Stepstone is scraped from public search pages. Indeed's
-RSS endpoint returns HTTP 403 on all requests and is not an active source.
-LinkedIn data is collected manually through LinkedIn's own CSV export tool —
-no automated LinkedIn scraping.
+requests (2 s for BA, 3 s for Indeed, 10–18 s random for Stepstone) and stops
+immediately on 403 or 429 responses. The pipeline is deliberately sequential —
+no parallelism.
 
 **Raw snapshots are immutable.** `title_raw` and `description_raw` are never
 modified after extraction. All transformations operate on derived fields.
 
-**Salary data is sparse.** Most German job postings omit salary ranges.
-Parsed figures come from the minority of listings that include them, so
-salary distributions reflect a self-selected subset of postings.
+**Source characteristics differ.** The Bundesagentur endpoint is an official
+public API. Stepstone data is scraped from public search pages. LinkedIn data is
+collected via LinkedIn's own CSV export tool — no automated LinkedIn scraping.
 
 **Not for commercial use.** All data collected is used solely for technical
 analysis and demonstration purposes.

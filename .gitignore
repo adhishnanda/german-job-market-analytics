@@ -1,8 +1,6 @@
 # Data — never commit
 data/raw/
 data/processed/
-data/db/
-*.duckdb
 
 # Secrets
 .env

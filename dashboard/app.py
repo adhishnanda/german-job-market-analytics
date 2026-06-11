@@ -14,13 +14,13 @@ import streamlit as st
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from analytics.aggregations import (
+from analytics.aggregations import (  # noqa: E402
     language_ratio,
     role_by_city,
     skill_demand_weekly,
     source_coverage,
 )
-from dashboard.charts import (
+from dashboard.charts import (  # noqa: E402
     language_ratio_chart,
     role_by_city_chart,
     role_donut_chart,
@@ -110,7 +110,9 @@ def _open_db() -> duckdb.DuckDBPyConnection | None:
         return None
 
 
-def _sidebar(conn: duckdb.DuckDBPyConnection) -> tuple[date, date, list[str], list[str]]:
+def _sidebar(
+    conn: duckdb.DuckDBPyConnection,
+) -> tuple[date, date, list[str], list[str]]:
     """Render sidebar filters; return (date_from, date_to, cities, roles)."""
     with st.sidebar:
         st.markdown("## Filters")
@@ -235,7 +237,7 @@ def main() -> None:
     )
     st.markdown(
         "<span style='color:#666666;font-size:12px;letter-spacing:0.08em;"
-        "font-family:\"IBM Plex Mono\",monospace'>"
+        'font-family:"IBM Plex Mono",monospace\'>'
         "SKILL DEMAND &nbsp;·&nbsp; COVERAGE &nbsp;·&nbsp; LANGUAGE &nbsp;·&nbsp; ROLES"
         "</span>",
         unsafe_allow_html=True,
@@ -274,7 +276,7 @@ def main() -> None:
 
     # ── Skill demand — full width ─────────────────────────────────────────────
     st.markdown(
-        "<p style='font-family:\"IBM Plex Mono\",monospace;font-size:10px;"
+        '<p style=\'font-family:"IBM Plex Mono",monospace;font-size:10px;'
         "letter-spacing:0.15em;text-transform:uppercase;color:#666666;"
         "margin:1.5rem 0 0.25rem 0'>SKILL DEMAND TREND</p>",
         unsafe_allow_html=True,
@@ -283,7 +285,7 @@ def main() -> None:
 
     # ── Role by city | Role donut ─────────────────────────────────────────────
     st.markdown(
-        "<p style='font-family:\"IBM Plex Mono\",monospace;font-size:10px;"
+        '<p style=\'font-family:"IBM Plex Mono",monospace;font-size:10px;'
         "letter-spacing:0.15em;text-transform:uppercase;color:#666666;"
         "margin:1.5rem 0 0.25rem 0'>ROLE BREAKDOWN</p>",
         unsafe_allow_html=True,
@@ -296,7 +298,7 @@ def main() -> None:
 
     # ── Source coverage | Language ratio ──────────────────────────────────────
     st.markdown(
-        "<p style='font-family:\"IBM Plex Mono\",monospace;font-size:10px;"
+        '<p style=\'font-family:"IBM Plex Mono",monospace;font-size:10px;'
         "letter-spacing:0.15em;text-transform:uppercase;color:#666666;"
         "margin:1.5rem 0 0.25rem 0'>COVERAGE &amp; LANGUAGE</p>",
         unsafe_allow_html=True,

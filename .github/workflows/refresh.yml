@@ -54,7 +54,7 @@ jobs:
             echo "No changes to jobs.duckdb — skipping commit"
           else
             git fetch origin main
-            git rebase origin/main
+            git rebase origin/main || git rebase --abort
             git commit -m "data: refresh jobs snapshot $(date -u +%Y-%m-%d)"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/adhishnanda/german-job-market-analytics.git main
           fi

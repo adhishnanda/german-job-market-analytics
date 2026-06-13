@@ -143,9 +143,9 @@
 - [ ] Final code review and cleanup
 - [x] Tag v1.0.0 locally (`git tag -a v1.0.0`)
 
-### Day 18 (buffer)
+### Day 18 (buffer) — in progress
 - [ ] Fix anything broken from real-world data
-- [ ] Add GitHub Actions workflow for scheduled BA refresh
+- [-] Add GitHub Actions workflow for scheduled BA refresh — `.github/workflows/refresh.yml` drafted, pending review
 - [ ] Final push
 
 ## Notes

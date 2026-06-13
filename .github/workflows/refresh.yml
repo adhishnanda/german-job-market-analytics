@@ -1,0 +1,54 @@
+name: Refresh job data
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            duckdb==1.1.3 \
+            streamlit==1.36.0 \
+            plotly==5.22.0 \
+            pandas==2.2.2 \
+            requests==2.32.3 \
+            feedparser==6.0.11 \
+            beautifulsoup4==4.12.3 \
+            lxml==5.2.2 \
+            langdetect==1.0.9 \
+            thefuzz==0.22.1
+
+      - name: Create data directories
+        run: mkdir -p data/raw data/processed data/db
+
+      - name: Run pipeline
+        run: python -m etl.pipeline_runner
+
+      - name: Commit updated snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/db/jobs.duckdb
+          if git diff --cached --quiet; then
+            echo "No changes to jobs.duckdb — skipping commit"
+          else
+            git commit -m "data: refresh jobs snapshot $(date -u +%Y-%m-%d)"
+            git push
+          fi

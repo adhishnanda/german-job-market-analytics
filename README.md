@@ -31,7 +31,6 @@ rather than four manual searches.
 ![Pipeline Architecture](docs/diagrams/architecture.svg)
 
 Indeed RSS          ✗  blocked (HTTP 403) — extractor retained, no live data
-```
 
 **Extract** — each source has its own extractor in `etl/extractors/`. Every run
 saves an immutable dated snapshot under `data/raw/{source}/YYYY-MM-DD/` before

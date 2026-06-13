@@ -135,13 +135,13 @@
 - [x] Write full README.md with screenshots and methodology
 - [x] Add architecture diagram to docs/architecture.md
 - [x] Add data quality notes and coverage gaps disclosure
-- [ ] Commit and push
+- [x] Commit and push
 
-### Day 17
+### Day 17 — 2026-06-13
 - [ ] Write LinkedIn post draft
 - [ ] Take dashboard screenshots for LinkedIn
 - [ ] Final code review and cleanup
-- [ ] Tag v1.0.0 release on GitHub
+- [x] Tag v1.0.0 locally (`git tag -a v1.0.0`)
 
 ### Day 18 (buffer)
 - [ ] Fix anything broken from real-world data

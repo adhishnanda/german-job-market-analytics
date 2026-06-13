@@ -1,0 +1,140 @@
+digraph GJMA {
+    bgcolor="#111111";
+    rankdir=TB;
+    splines=line;
+    nodesep=0.55;
+    ranksep=0.75;
+    fontname="Helvetica";
+
+    node [
+        shape=box,
+        style="rounded,filled",
+        fillcolor="#1a1a1a",
+        color="#2a2a2a",
+        fontcolor="#e8e8e8",
+        fontname="Helvetica",
+        fontsize=12,
+        penwidth=1.2,
+        margin="0.18,0.12"
+    ];
+    edge [
+        color="#3a3a3a",
+        arrowsize=0.7,
+        penwidth=1.2
+    ];
+
+    // ── Sources ──────────────────────────────────────────────
+    subgraph cluster_sources {
+        label="Data Sources";
+        labelloc="t";
+        fontcolor="#888888";
+        fontsize=11;
+        style="rounded";
+        color="#222222";
+        margin=14;
+
+        BA   [label="Bundesagentur\nREST API v6"];
+        IND  [label="Indeed RSS\n(blocked — 403)", fontcolor="#666666", color="#333333"];
+        SS   [label="Stepstone\nHTML scrape"];
+        LI   [label="LinkedIn\nmanual CSV"];
+
+        { rank=same; BA; IND; SS; LI; }
+    }
+
+    // ── Extract ──────────────────────────────────────────────
+    subgraph cluster_extract {
+        label="Extract";
+        labelloc="t";
+        fontcolor="#888888";
+        fontsize=11;
+        style="rounded";
+        color="#222222";
+        margin=14;
+
+        E_BA  [label="extract_ba", fillcolor="#161f24", color="#00d4ff", fontcolor="#00d4ff"];
+        E_SS  [label="extract_ss", fillcolor="#161f24", color="#00d4ff", fontcolor="#00d4ff"];
+        E_LI  [label="extract_li\n(FileSensor)", fillcolor="#161f24", color="#00d4ff", fontcolor="#00d4ff"];
+        E_IND [label="extract_ind\n(no-op)", fontcolor="#666666", color="#333333"];
+
+        { rank=same; E_BA; E_SS; E_LI; E_IND; }
+    }
+
+    // ── Transform ────────────────────────────────────────────
+    subgraph cluster_transform {
+        label="Normalize + Enrich";
+        labelloc="t";
+        fontcolor="#888888";
+        fontsize=11;
+        style="rounded";
+        color="#222222";
+        margin=14;
+
+        NORM  [label="normalizer\n29-column canonical schema"];
+        SKILL [label="skill_extractor\n~70 skills (regex)"];
+        SAL   [label="salary_parser\nDE / EN formats"];
+
+        { rank=same; NORM; SKILL; SAL; }
+    }
+
+    // ── Dedup ────────────────────────────────────────────────
+    DEDUP [label="deduplicator\n2-pass: within-source + cross-source",
+           fillcolor="#161f24", color="#00d4ff", fontcolor="#00d4ff"];
+
+    // ── DuckDB ───────────────────────────────────────────────
+    subgraph cluster_db {
+        label="DuckDB  (data/db/jobs.duckdb)";
+        labelloc="t";
+        fontcolor="#888888";
+        fontsize=11;
+        style="rounded";
+        color="#222222";
+        margin=14;
+
+        RAW  [label="jobs_raw\n(table)"];
+        CLEAN [label="jobs_clean\n(view: is_duplicate=FALSE)"];
+        EXPL [label="skills_exploded\n(view)"];
+
+        { rank=same; RAW; CLEAN; EXPL; }
+        RAW -> CLEAN [style=invis];
+        CLEAN -> EXPL [style=invis];
+    }
+
+    // ── Analytics ────────────────────────────────────────────
+    AGG [label="analytics/aggregations.py\nskill demand · roles · coverage · language"];
+
+    // ── Dashboard ────────────────────────────────────────────
+    DASH [label="Streamlit Dashboard\n(deployed — Streamlit Cloud)",
+          fillcolor="#0d2933", color="#00d4ff", fontcolor="#00d4ff", penwidth=1.8];
+
+    // ── Orchestration ────────────────────────────────────────
+    AIRFLOW [label="Airflow DAG: job_market_pipeline\n@daily · catchup=False",
+             shape=box, style="dashed,rounded", color="#555555", fontcolor="#aaaaaa", fontsize=11];
+
+    // ── Edges ────────────────────────────────────────────────
+    BA -> E_BA;
+    SS -> E_SS;
+    LI -> E_LI;
+    IND -> E_IND [color="#333333"];
+
+    E_BA -> NORM;
+    E_SS -> NORM;
+    E_LI -> NORM;
+    E_IND -> NORM [color="#333333"];
+
+    NORM -> SKILL [style=invis];
+    NORM -> SAL [style=invis];
+
+    NORM -> DEDUP;
+    SKILL -> DEDUP;
+    SAL -> DEDUP;
+
+    DEDUP -> RAW;
+    RAW -> AGG [ltail=cluster_db];
+    AGG -> DASH;
+
+    AIRFLOW -> E_BA [style=dashed, color="#555555", constraint=false];
+    AIRFLOW -> E_SS [style=dashed, color="#555555", constraint=false];
+    AIRFLOW -> E_LI [style=dashed, color="#555555", constraint=false];
+    AIRFLOW -> DEDUP [style=dashed, color="#555555", constraint=false];
+    AIRFLOW -> RAW [style=dashed, color="#555555", constraint=false, label="load_to_duckdb", fontcolor="#666666", fontsize=9];
+}

@@ -2,9 +2,11 @@
 
 ## Overview
 
-Three active sources feed a sequential ETL pipeline that lands data in DuckDB
-and surfaces it through a Streamlit dashboard. Airflow schedules the daily run;
-LinkedIn is manual-only.
+Three active sources (BA, Stepstone, LinkedIn) feed a six-stage pipeline that
+lands data in DuckDB and surfaces it through a deployed Streamlit dashboard.
+Airflow orchestrates the daily run with extract tasks running in parallel;
+LinkedIn is a manual trigger via a FileSensor. Indeed RSS remains permanently
+blocked (HTTP 403) — its extractor is retained but produces no live data.
 
 ```
 Bundesagentur API ──┐
@@ -334,8 +336,15 @@ etl/
 airflow/dags/    job_market_pipeline.py
 analytics/       aggregations.py
 dashboard/       app.py  charts.py
-tests/           (mirrors etl/ structure; 312 passing, 3 skipped)
-docs/            architecture.md  schema.md  decisions.md  progress.md
+tests/
+  extractors/    test_bundesagentur.py  test_indeed.py  test_stepstone.py  test_linkedin.py
+  transformers/  test_normalizer.py  test_skill_extractor.py  test_salary_parser.py  test_deduplicator.py
+  loaders/       test_duckdb_loader.py
+  analytics/     test_aggregations.py
+  test_dag_loads.py           # verifies DAG parses without errors
+  test_pipeline_e2e.py        # BA extract→normalize→dedup→load (mocked HTTP)
+  test_pipeline_integration.py  # 4-source fixture: all sources→dedup→load
+docs/            architecture.md  schema.md  sources.md  decisions.md  progress.md
 ```
 
 `data/raw/` and `data/processed/` are gitignored. `data/db/jobs.duckdb` is

@@ -28,11 +28,7 @@ rather than four manual searches.
 ---
 
 ## Architecture
-
-```
-Bundesagentur API ──┐
-Stepstone HTML      ├──► Extract ──► Normalise ──► Deduplicate ──► Load (DuckDB) ──► Aggregate ──► Dashboard
-LinkedIn CSV ───────┘ (manual)
+![Pipeline Architecture](docs/diagrams/architecture.svg)
 
 Indeed RSS          ✗  blocked (HTTP 403) — extractor retained, no live data
 ```

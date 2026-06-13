@@ -54,5 +54,5 @@ jobs:
             echo "No changes to jobs.duckdb — skipping commit"
           else
             git commit -m "data: refresh jobs snapshot $(date -u +%Y-%m-%d)"
-            git push
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/adhishnanda/german-job-market-analytics.git main
           fi

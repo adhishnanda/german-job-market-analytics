@@ -49,7 +49,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
+          git fetch origin main
+          git rebase origin/main
           git add data/db/jobs.duckdb
           if git diff --cached --quiet; then
             echo "No changes to jobs.duckdb — skipping commit"

@@ -213,7 +213,7 @@ pytest tests/ -v --cov=etl --cov-report=term-missing
 
 ## Author
 
-**Adhish Nanda** — Data Science MSc candidate, Berlin
+**Adhish Nanda** - Data Science MSc candidate, Berlin
 
 [Portfolio](https://adhishnanda.github.io) &nbsp;·&nbsp;
 [GitHub](https://github.com/adhishnanda) &nbsp;·&nbsp;

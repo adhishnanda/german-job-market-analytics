@@ -21,7 +21,7 @@ Which tools do German employers actually require for data and analytics roles, a
 
 ## Key findings
 
-From 574 canonical records across 8 German cities:
+From 712 canonical records across 8 German cities:
 
 | Skill | Postings |
 |---|---|
@@ -31,9 +31,9 @@ From 574 canonical records across 8 German cities:
 | Looker | 6 |
 | dbt | 5 |
 
-Top hiring companies: Tesla Germany (37 postings), Akkodis (16), Mercedes-Benz (16).
+Top hiring companies: Tesla Germany GmbH (41 postings), Mercedes-Benz Group AG (19), Akkodis Germany Tech Experts GmbH (18).
 
-Deduplication rate: ~41% — the same posting appears across multiple sources and keyword queries.
+Deduplication rate: ~41% of records fetched in a single run are duplicates — the same posting resurfacing across overlapping keyword × city searches within a source — collapsed before they're loaded.
 
 ---
 
